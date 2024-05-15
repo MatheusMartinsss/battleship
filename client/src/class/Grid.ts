@@ -12,8 +12,8 @@ interface GridProps {
 interface Rect {
     row: number;
     col: number;
-    lastCol: number | null
-    lastRow: number | null;
+    lastCol: number;
+    lastRow: number;
     width: number;
     height: number;
     color: string;
@@ -116,16 +116,14 @@ export class Grid {
 
     private handleMouseDown(event: MouseEvent) {
         const position = this.getMousePosition(event.clientX, event.clientY)
-        if (position && this.grid[position.col][position.row] != 0) {
-            const draggeRectKey = this.grid[position.col][position.row]
+        if (position && this.grid[position.row][position.col] != 0) {
+            const draggeRectKey = this.grid[position.row][position.col]
             this.draggedRect = draggeRectKey
             this.rects[draggeRectKey].lastCol = position.col // Seta a ultima col 
             this.rects[draggeRectKey].lastRow = position.row // Seta a ultima row
-
         }
 
     }
-
     private getMousePosition(x: number, y: number): { col: number, row: number } | null {
         if (this.canvas) {
             const rect = this.canvas.getBoundingClientRect();
@@ -154,14 +152,15 @@ export class Grid {
     private handleMouseUp(event: MouseEvent) {
         if (this.draggedRect) {
             let currentRect = this.rects[this.draggedRect]
-            if (currentRect.lastRow && currentRect.lastCol) {
-                this.grid[currentRect.lastCol][currentRect.lastRow] = 0
-                this.grid[currentRect.col][currentRect.row] = 1
+            if (this.grid[currentRect.lastRow][currentRect.lastCol] == this.draggedRect) { //Verificar se a chave do item que está na ultima posição é o mesmo que está movido
+                this.grid[currentRect.lastRow][currentRect.lastCol] = 0
+                this.grid[currentRect.row][currentRect.col] = 1
+                this.rects[this.draggedRect] = currentRect
+                this.draggedRect = null
             }
-            this.rects[this.draggedRect] = currentRect
-            this.draggedRect = null
         }
     }
+
 
     drawRect(rect: Rect, context: CanvasRenderingContext2D) {
         context.fillStyle = rect.color
