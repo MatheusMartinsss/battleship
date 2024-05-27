@@ -14,7 +14,7 @@ export default function Canvas({ height = 500, width = 500, gameLoop }: CanvasPr
         function draw(context: CanvasRenderingContext2D) {
             if (context) {
                 context.fillStyle = 'black'
-                context.fillRect(0, 0, height, width);
+                context.fillRect(0, 0, width, height);
                 if (canvasRef.current) {
                     gameLoop(context, canvasRef.current)
                 }
@@ -34,5 +34,5 @@ export default function Canvas({ height = 500, width = 500, gameLoop }: CanvasPr
         return () => cancelAnimationFrame(frameRef.current);
     }, [height, width]);
 
-    return <canvas ref={canvasRef} />;
+    return <canvas style={{ width: width, height: height }} ref={canvasRef} />;
 }

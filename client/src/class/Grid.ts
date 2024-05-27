@@ -6,6 +6,7 @@ interface GridProps {
     width: number;
     height: number;
     gridCellSize: number;
+    isSecondTable?: boolean
     lineWidth: number;
 }
 
@@ -32,6 +33,7 @@ export class Grid {
     lineWidth: number;
     rects: { [key: string]: Rect }
     grid: number[][]
+    isSecondTable: boolean
     canvas?: HTMLCanvasElement
     startedListeners: boolean
     private draggedRect: number | null
@@ -41,10 +43,12 @@ export class Grid {
         width,
         height,
         gridCellSize,
+        isSecondTable = false,
         lineWidth = 1
 
     }: GridProps) {
         this.position = position;
+        this.isSecondTable = isSecondTable
         this.draggedRect = null
         this.grid = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -60,17 +64,6 @@ export class Grid {
 
         ]
         this.rects = {}
-        this.rects['1'] = {
-            col: 1,
-            row: 1,
-            lastCol: 1,
-            lastRow: 1,
-            size: 2,
-            color: 'green',
-            height: 50,
-            width: 50
-        }
-        this.grid[1][1] = 1
         this.width = width;
         this.height = height;
         this.gridCellSize = gridCellSize;
@@ -79,6 +72,7 @@ export class Grid {
 
     }
 
+
     draw(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
         context.save()
         context.beginPath()
@@ -86,18 +80,28 @@ export class Grid {
         context.strokeStyle = 'green'
         this.canvas = canvas
 
-        for (let lx = this.position.x; lx < this.position.x + this.width; lx += this.gridCellSize) {
-            context.moveTo(lx, this.position.y)
-            context.lineTo(lx, this.position.y + this.height)
+
+        for (let row = 0; row < this.grid.length; row++) {
+            for (let col = 0; col < this.grid[row].length; col++) {
+                context.fillStyle = this.grid[row][col] === 0 ? 'gray' : 'black'
+                context.fillRect(col * this.gridCellSize, row * this.gridCellSize, this.gridCellSize, this.gridCellSize);
+                context.strokeRect(col * this.gridCellSize, row * this.gridCellSize, this.gridCellSize, this.gridCellSize);
+            }
         }
 
-        for (let ly = this.position.y; ly < this.position.y + this.height; ly += this.gridCellSize) {
-            context.moveTo(this.position.x, ly)
-            context.lineTo(this.position.x + this.width, ly)
-        }
-        /*    if (this.draggedRect) {
-                this.drawRect(this.draggedRect, context)
-            }*/
+        /*
+                for (let lx = this.position.x; lx < this.position.x + this.width; lx += this.gridCellSize) {
+                    context.moveTo(lx, this.position.y)
+                    context.lineTo(lx, this.position.y + this.height)
+                }
+        
+                for (let ly = this.position.y; ly < this.position.y + this.height; ly += this.gridCellSize) {
+                    context.moveTo(this.position.x, ly)
+                    context.lineTo(this.position.x + this.width, ly)
+                }
+                /*    if (this.draggedRect) {
+                        this.drawRect(this.draggedRect, context)
+                    }*/
 
         Object.values(this.rects).forEach((rect) => {
             this.drawRect(rect, context);
@@ -114,9 +118,22 @@ export class Grid {
         context.restore()
     }
 
+    addRect(col: number, row: number, id: number) {
+        this.rects[id] = {
+            col,
+            row,
+            lastCol: col,
+            lastRow: row,
+            height: 40,
+            width: 40,
+            color: 'red',
+            size: 2
+        }
+        this.grid[row][col] = id
+    }
     private handleMouseDown(event: MouseEvent) {
         const position = this.getMousePosition(event.clientX, event.clientY)
-        if (position && this.grid[position.row][position.col] != 0) {
+        if (position && this.grid[position.row][position.col] && !this.isSecondTable) {
             const draggeRectKey = this.grid[position.row][position.col]
             this.draggedRect = draggeRectKey
             this.rects[draggeRectKey].lastCol = position.col // Seta a ultima col 
@@ -127,12 +144,17 @@ export class Grid {
     private getMousePosition(x: number, y: number): { col: number, row: number } | null {
         if (this.canvas) {
             const rect = this.canvas.getBoundingClientRect();
+
+            // Calcula as coordenadas do mouse relativas ao canvas
             const cords = {
                 x: (x - rect.left) / (rect.right - rect.left) * this.canvas.width,
                 y: (y - rect.top) / (rect.bottom - rect.top) * this.canvas.height
             };
-            const currentCol = Math.floor(cords.x / 50);
-            const currentRow = Math.floor(cords.y / 50);
+
+
+            // Calcula as posições da coluna e linha
+            const currentCol = Math.floor(cords.x / 40);
+            const currentRow = Math.floor(cords.y / 40);
 
             return { col: currentCol, row: currentRow };
         }
@@ -153,17 +175,19 @@ export class Grid {
         if (this.draggedRect) {
             let currentRect = this.rects[this.draggedRect]
             if (this.grid[currentRect.lastRow][currentRect.lastCol] == this.draggedRect) { //Verificar se a chave do item que está na ultima posição é o mesmo que está movido
+                //Limpa posição anterior na grid
                 this.grid[currentRect.lastRow][currentRect.lastCol] = 0
-                this.grid[currentRect.row][currentRect.col] = 1
+                //Seta posição atual na grid
+                this.grid[currentRect.row][currentRect.col] = this.draggedRect
+
                 this.rects[this.draggedRect] = currentRect
                 this.draggedRect = null
             }
         }
     }
-
-
     drawRect(rect: Rect, context: CanvasRenderingContext2D) {
         context.fillStyle = rect.color
         context.fillRect((rect.col * this.gridCellSize), (rect.row * this.gridCellSize), rect.width, rect.height)
+
     }
 }
