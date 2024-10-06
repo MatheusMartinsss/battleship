@@ -1,13 +1,13 @@
-import { useEffect, useRef } from "react";
+import { RefObject, useEffect, useRef } from "react";
 
 interface CanvasProps {
     gameLoop: (context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => void
+    canvasRef: RefObject<HTMLCanvasElement>
     height?: number;
     width?: number;
 }
 
-export default function Canvas({ height = 500, width = 500, gameLoop }: CanvasProps) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+export default function Canvas({ height = 500, width = 500, gameLoop, canvasRef }: CanvasProps) {
     const frameRef = useRef<number>(0);
 
     useEffect(() => {
@@ -23,12 +23,11 @@ export default function Canvas({ height = 500, width = 500, gameLoop }: CanvasPr
         }
         if (canvasRef.current) {
             const context = canvasRef.current.getContext("2d");
-
             if (context) {
                 context.canvas.height = height;
                 context.canvas.width = width;
-
                 frameRef.current = requestAnimationFrame(() => draw(context));
+
             }
         }
         return () => cancelAnimationFrame(frameRef.current);
