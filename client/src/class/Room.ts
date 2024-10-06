@@ -38,6 +38,7 @@ export class Room {
         for (const id in data) {
             this.players[id] = {
                 ...data[id],
+                
                 grid: new Grid({
                     gridCellSize: 40,
                     isStarted: false,
