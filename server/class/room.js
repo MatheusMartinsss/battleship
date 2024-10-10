@@ -3,7 +3,7 @@ class Room {
 
     constructor({
         id,
-        players = {},
+        players = [],
         status = 'waiting',
         turnId = '',
         winnerId = '',
@@ -19,15 +19,19 @@ class Room {
         this.turnId = turnId
         this.winnerId = winnerId
     }
-    addPlayer(playerId, data) {
-        this.players[playerId] = data
-        this.players[playerId].score = 0;
+    addPlayer(playerId) {
+        if (!this.players.includes(playerId)) {
+            this.players.push(playerId)
+        }
         if (Object.keys(this.players).length === 1) {
             this.firstPlayer = playerId;
         } else {
             this.secondPlayer = playerId
         }
 
+    }
+    removePlayer(playerId) {
+        this.players = this.players.filter((players) => players.id !== playerId)
     }
     nextTurn() {
         const playersId = Object.keys(this.players);
@@ -50,8 +54,8 @@ class Room {
         return verifyallPlayersIsReady
     }
 
-    processeAttack(attackerId, targetId, position) {
-        const target = this.players[targetId];
+    processeAttack(attackerId, target, position) {
+        
         const hitRect = Object.values(target.rects).find((rect) => rect.col == position.col && rect.row == position.row);
 
         let response = {
