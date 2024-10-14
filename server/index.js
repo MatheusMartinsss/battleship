@@ -91,21 +91,11 @@ io.on('connection', (socket) => {
     socket.on('attack', (request) => {
         const { position, targetId, roomId } = request
 
-        const player = players[socket.id]
+        const { players, room } = handleAttack(socket.id, targetId, position, roomId)
 
-        const attackResult = verifyAttack(socket.id, targetId, position)
-        players[socket.id].enemyGrid[position.row][position.col].hited = true
-
-        console.log('player is updated', players[socket.id].enemyGrid, players[targetId].enemyGrid)
-        socket.emit('attack-result', { player: players[socket.id] })
-
-        io.to(targetId).emit('under-attack', attackResult)
-
-        io.in(roomId).emit('update', {
-            turnId: targetId
-        })
-
+        io.in(roomId).emit('attack-result', { players, room, targetId, attackerId: socket.id })
     })
+
     socket.on('disconnect', () => {
         onPlayerLeave(socket.id)
     })
@@ -116,11 +106,7 @@ io.on('connection', (socket) => {
         room.turnId = room.firstPlayer
         io.to(roomId).emit('start', { turnId: room.turnId })
     }
-    function updateRoom(roomId) {
-        socket.to(roomId).emit('update', {
-            response: rooms[roomId]
-        })
-    }
+
     function findOrCreateRoom(roomId) {
         if (!rooms[roomId]) {
             rooms[roomId] = new Room({ id: roomId })
@@ -135,6 +121,7 @@ io.on('connection', (socket) => {
                 roomId,
                 grid: initialMatrix,
                 enemyGrid: initialEnemyMatrix,
+                eRects: {},
                 rects: playerId == socket.id ? {
                     [1]: {
                         col: 0,
@@ -143,6 +130,7 @@ io.on('connection', (socket) => {
                         lastRow: 0,
                         height: 40,
                         width: 40,
+                        status: 'alive',
                         color: 'red',
                         size: 2
                     },
@@ -154,6 +142,7 @@ io.on('connection', (socket) => {
                         height: 40,
                         width: 40,
                         color: 'red',
+                        status: 'alive',
                         size: 2
                     },
                     [3]: {
@@ -164,6 +153,7 @@ io.on('connection', (socket) => {
                         height: 40,
                         width: 40,
                         color: 'red',
+                        status: 'alive',
                         size: 2
                     },
                     [4]: {
@@ -174,6 +164,7 @@ io.on('connection', (socket) => {
                         height: 40,
                         width: 40,
                         color: 'red',
+                        status: 'alive',
                         size: 2
                     }
                 } : {},
@@ -227,6 +218,44 @@ io.on('connection', (socket) => {
             targetId,
             nextTurnId: targetId
         }
+    }
+
+    function handleAttack(playerId, targetID, position, roomId) {
+
+        let { col, row } = position
+        let player = findOnePlayer(playerId)
+        let target = findOnePlayer(targetID)
+        let room = rooms[roomId]
+        const rectHitedId = target.grid[row][col].rectId
+
+        if (rectHitedId) {
+            target.rects[rectHitedId] = handleHitRect(target.rects[rectHitedId])
+        }
+
+        target.grid[row][col] = handleHitGrid(target.grid[row][col], rectHitedId)
+        player.enemyGrid[row][col] = handleHitGrid(target.enemyGrid[row][col], rectHitedId)
+        let newERects = { ...player.eRects, [rectHitedId]: target.rects[rectHitedId] }
+        player.eRects = newERects
+
+        room.turnId = targetID
+
+        players[targetID] = target
+        players[playerId] = player
+        rooms[roomId] = room
+
+        const playersUpdated = findPlayersByRoom(roomId)
+        return {
+            players: playersUpdated,
+            room
+        }
+
+    }
+    function handleHitGrid(grid, rectId ) {
+        return { ...grid, hited: true, rectId  }
+    }
+
+    function handleHitRect(rect) {
+        return { ...rect, status: 'exploded' }
     }
 })
 
