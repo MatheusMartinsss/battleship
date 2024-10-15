@@ -180,24 +180,41 @@ function Game() {
             handleAttack(data)
         })
     }, [])
-
     useEffect(() => {
-
+        socket.on('restart', (response) => {
+            const { players, room } = response
+            console.log(players, room)
+            const newState = { ...roomRef.current, ...room }
+            players.forEach((player) => {
+                if (player.id === socket.id) {
+                    setPlayerGrid((state) => ({ ...state, grid: player.grid, rects: player.rects }))
+                } else if (player.id == socket.id) {
+                    setPlayer1((state) => ({ ...state }))
+                    setEnemyGrid((state) => ({ ...state, grid: player.enemyGrid, rects: player.eRects }))
+                }
+            })
+            setRoom(newState)
+        })
+    }, [socket])
+    useEffect(() => {
         socket.on('attack-result', (response) => {
-            const { players, room, targetId, attackerId } = response
-        
+            const { players, room, targetId, attackerId, hasWinner } = response
+
             const newState = { ...roomRef.current, ...room }
 
             players.forEach((player) => {
                 if (player.id === socket.id && player.id == targetId) {
                     setPlayerGrid((state) => ({ ...state, grid: player.grid, rects: player.rects }))
                 } else if (player.id == socket.id && player.id === attackerId) {
-                    console.log(player.enemyGrid)
                     setPlayer1((state) => ({ ...state }))
                     setEnemyGrid((state) => ({ ...state, grid: player.enemyGrid, rects: player.eRects }))
                 }
             })
-            if (socket.id == newState.turnId) {
+
+            if (hasWinner) {
+                alert(`O jogador ${room.winnerId} venceu!.`)
+            }
+            if (socket.id == newState.turnId && !hasWinner) {
                 setPlayerTurn(true)
                 setCurrentCanvas(table2Ref.current)
             } else {
@@ -206,9 +223,11 @@ function Game() {
             setRoom(newState)
         })
     }, [])
-
+    const restartGame = () => {
+        setRoom((state) => ({ ...state, winnerId: null }))
+        socket.emit('restart', { roomId })
+    }
     const connect = () => {
-        console.log(roomId)
         socket.emit('join', { id: socket.id, roomId: roomId })
     }
     const ready = () => {
@@ -224,11 +243,11 @@ function Game() {
     }
 
     const gameLoopTable1 = (context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-       
+
         draw(context, canvas, playerGridRef.current)
     }
     const gameLoopTable2 = (context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-       
+
         draw(context, canvas, enemyGridRef.current)
     }
     const handleListeners = (table: HTMLCanvasElement) => {
@@ -313,12 +332,6 @@ function Game() {
         return null
     }
 
-    const onTakeHit = () => {
-
-    }
-    const onHit = () => {
-
-    }
     const handleAttack = (data) => {
 
     }
@@ -340,7 +353,10 @@ function Game() {
                 <Label>Player: {player1?.id} </Label>
                 <Canvas height={400} width={400} gameLoop={gameLoopTable1} canvasRef={table1Ref} />
             </div>
-            <Button onClick={ready}>Pronto</Button>
+            <Button disabled={room.status == 'started'} onClick={ready}>Pronto</Button>
+            {room.winnerId &&
+                <Button onClick={restartGame}>Jogar Novamente</Button>
+            }
         </div>
     )
 }

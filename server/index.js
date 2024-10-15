@@ -18,30 +18,8 @@ const io = socket(server, {
 
 let rooms = {}
 let players = {}
-
-
-
-io.on('connection', (socket) => {
-    const initialMatrix = Array.from({ length: 10 }, (row, rowIndex) =>
-        Array.from({ length: 10 }, (col, colIndex) => {
-            if (rowIndex === 0 && colIndex < 4) {
-                return {
-                    id: colIndex + 1,  // Id baseado na posição inicial
-                    status: 'active',  // Status inicial apenas para os primeiros 4
-                    rectId: colIndex + 1,
-                    hited: false       // Outro atributo que pode ser modificado depois
-                };
-            } else {
-                return {
-                    id: colIndex + 1,
-                    status: 'inactive',  // Status padrão para os demais,
-                    rectId: null,
-                    hited: false
-                };
-            }
-        })
-    );
-    const initialEnemyMatrix = Array.from({ length: 10 }, (row, rowIndex) =>
+function createInitialMatrix() {
+    return Array.from({ length: 10 }, (row, rowIndex) =>
         Array.from({ length: 10 }, (col, colIndex) => {
             return {
                 id: colIndex + 1,  // Id baseado na posição inicial
@@ -51,6 +29,13 @@ io.on('connection', (socket) => {
             };
         })
     );
+}
+
+
+io.on('connection', (socket) => {
+    let initialMatrix = createInitialMatrix()
+    let initialEnemyMatrix = createInitialMatrix()
+
     socket.on('create', () => {
         const userId = uuidv4();
         findOrCreateRoom(userId)
@@ -92,8 +77,33 @@ io.on('connection', (socket) => {
         const { position, targetId, roomId } = request
 
         const { players, room } = handleAttack(socket.id, targetId, position, roomId)
+        let hasWinner = false;
+        if (room.winnerId) {
+            hasWinner = true
+        }
+        io.in(roomId).emit('attack-result', { players, room, targetId, attackerId: socket.id, hasWinner })
+    })
 
-        io.in(roomId).emit('attack-result', { players, room, targetId, attackerId: socket.id })
+    socket.on('restart', (request) => {
+        const { roomId } = request
+
+        let room = findOrCreateRoom(roomId)
+
+
+        room.status = 'waiting'
+        room.winnerId = null
+        room.turnId = null
+        resetMatrix()
+
+        const playersRoom = findPlayersByRoom(roomId)
+
+        playersRoom.map((player) => {
+            return players[player.id] = generatePlayer(player.id, player.roomId)
+        })
+
+        io.in(roomId).emit('restart', { players: findPlayersByRoom(roomId), room })
+
+
     })
 
     socket.on('disconnect', () => {
@@ -116,70 +126,50 @@ io.on('connection', (socket) => {
     function findOrAddPlayer(playerId, roomId) {
         if (!players[playerId]) {
             // Inicializa o jogador com o grid vazio
-            const player = new Player({
-                id: playerId,
-                roomId,
-                grid: initialMatrix,
-                enemyGrid: initialEnemyMatrix,
-                eRects: {},
-                rects: playerId == socket.id ? {
-                    [1]: {
-                        col: 0,
-                        row: 0,
-                        lastCol: 2,
-                        lastRow: 0,
-                        height: 40,
-                        width: 40,
-                        status: 'alive',
-                        color: 'red',
-                        size: 2
-                    },
-                    [2]: {
-                        col: 1,
-                        row: 0,
-                        lastCol: 1,
-                        lastRow: 0,
-                        height: 40,
-                        width: 40,
-                        color: 'red',
-                        status: 'alive',
-                        size: 2
-                    },
-                    [3]: {
-                        col: 2,
-                        row: 0,
-                        lastCol: 2,
-                        lastRow: 0,
-                        height: 40,
-                        width: 40,
-                        color: 'red',
-                        status: 'alive',
-                        size: 2
-                    },
-                    [4]: {
-                        col: 3,
-                        row: 0,
-                        lastCol: 3,
-                        lastRow: 0,
-                        height: 40,
-                        width: 40,
-                        color: 'red',
-                        status: 'alive',
-                        size: 2
-                    }
-                } : {},
-                status: 'waiting',
-            });
-
+            const player = generatePlayer(playerId, roomId)
             players[playerId] = player; // Salva o jogador na lista de players
         }
         return players[playerId];
+    }
+    function generatePlayer(playerId, roomId) {
+        return new Player({
+            id: playerId,
+            roomId,
+            name: '',
+            score: 0,
+            grid: initialMatrix,
+            enemyGrid: initialEnemyMatrix,
+            eRects: {},
+            rects: {
+                [1]: generateRect(1, initialMatrix),
+                [2]: generateRect(2, initialMatrix),
+                [3]: generateRect(3, initialMatrix),
+                [4]: generateRect(4, initialMatrix)
+            },
+            status: 'waiting',
+        });
     }
     function findPlayersByRoom(roomId, playerId) {
         const ids = rooms[roomId].players;
         return ids.map((id) => {
             return players[id]
         });
+    }
+    function generateRect(rectId, matrix) {
+        const randomCol = Math.floor(Math.random() * 10);
+        const randomRow = Math.floor(Math.random() * 10);
+        matrix[randomRow][randomCol].rectId = rectId
+        return {
+            col: randomCol,
+            row: randomRow,
+            lastCol: randomCol,
+            lastRow: randomRow,
+            height: 40,
+            width: 40,
+            status: 'alive',
+            color: 'red',
+            size: 2
+        }
     }
     function findOneRoom(roomId) {
         return rooms[roomId]
@@ -230,6 +220,10 @@ io.on('connection', (socket) => {
 
         if (rectHitedId) {
             target.rects[rectHitedId] = handleHitRect(target.rects[rectHitedId])
+            player.score++;
+        }
+        if (player.score == 4) {
+            room.winnerId = player.id
         }
 
         target.grid[row][col] = handleHitGrid(target.grid[row][col], rectHitedId)
@@ -250,12 +244,16 @@ io.on('connection', (socket) => {
         }
 
     }
-    function handleHitGrid(grid, rectId ) {
-        return { ...grid, hited: true, rectId  }
+    function handleHitGrid(grid, rectId) {
+        return { ...grid, hited: true, rectId }
     }
 
     function handleHitRect(rect) {
         return { ...rect, status: 'exploded' }
+    }
+    function resetMatrix() {
+        initialMatrix = createInitialMatrix();  // Restaura a matriz ao estado inicial
+        initialEnemyMatrix = createInitialMatrix();
     }
 })
 

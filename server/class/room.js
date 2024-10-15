@@ -6,7 +6,7 @@ class Room {
         players = [],
         status = 'waiting',
         turnId = '',
-        winnerId = '',
+        winnerId = null,
         firstPlayer = '',
         secondPlayer = ''
     }) {

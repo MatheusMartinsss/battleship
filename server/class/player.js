@@ -6,6 +6,7 @@ class Player {
         rects,
         eRects,
         status,
+        name,
         grid,
         roomId,
         enemyGrid,
@@ -14,11 +15,13 @@ class Player {
     }) {
         this.id = id
         this.roomId = roomId
+        this.score = score
         this.rects = rects
         this.enemyGrid = enemyGrid
         this.grid = grid,
-            this.eRects = eRects
-        this.status = status
+        this.eRects = eRects,
+        this.status = status,
+        this.name = name,
         this.isReady = isReady
     }
 
