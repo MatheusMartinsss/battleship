@@ -1,14 +1,16 @@
-import { Card } from "./ui/card"
 import { Label } from "./ui/label"
-
 
 export const WaitingCard = () => {
 
     return (
-        <Card
-            className="w-[400px] h-[400px] flex text-center justify-center items-center"
+        <div
+            className="absolute w-[400px] h-[400px] flex items-center justify-center bg-gray-800 bg-opacity-75 z-[999]"
         >
-            <Label>Aguardando outro jogador...</Label>
-        </Card>
-    )
+            <div className="p-4 rounded-xl shadow-lg flex">
+                <Label className="animate-pulse text-white text-lg font-semibold ">
+                    Aguardando jogador...
+                </Label>
+            </div>
+        </div>
+    );
 }

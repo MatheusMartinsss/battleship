@@ -5,6 +5,7 @@ class Room {
         id,
         players = [],
         status = 'waiting',
+        name = "",
         turnId = '',
         winnerId = null,
         firstPlayer = '',
@@ -14,6 +15,7 @@ class Room {
         this.id = id
         this.firstPlayer = firstPlayer
         this.secondPlayer = secondPlayer
+        this.name = name
         this.players = players
         this.status = status
         this.turnId = turnId

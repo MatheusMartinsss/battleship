@@ -1,362 +1,107 @@
-import { useEffect, useRef, useState } from 'react'
-import Canvas from '../components/table'
 import { useSocket } from '../context/useSocket'
-import { WaitingCard } from '../components/waitingPlayer'
-import { Label } from '../components/ui/label'
 import { Button } from '../components/ui/button'
-import { createGrid, draw } from '../lib/grid'
 import { useParams } from 'react-router-dom';
+import { useGameStore } from '@/context/gameStore'
+import PlayerGrid from '@/components/PlayerGrid'
+import OpponentGrid from '@/components/OpponentGrid'
+import GameInfo from '@/components/GameInfo';
+import { useEffect } from 'react';
+import { useTimer } from '@/lib/useTimer';
 
 function Game() {
     const { socket } = useSocket()
     const { roomId } = useParams(); // Acessa o parâmetro da rota
-    const [room, setRoom] = useState<any>({
-        roomId: roomId,
-        turnId: null,
-        status: 'waiting',
-        started: false,
-        players: {},
-
-    })
-
-    const [playerGrid, setPlayerGrid] = useState(null)
-    const [enemyGrid, setEnemyGrid] = useState(null)
-    const [isPlayerTurn, setPlayerTurn] = useState(false)
-    const [isLoading, setLoading] = useState(true)
-    const [player1, setPlayer1] = useState(null)
-    const [player2, setPlayer2] = useState(null)
-    const table2Ref = useRef<HTMLCanvasElement>(null)
-    const table1Ref = useRef<HTMLCanvasElement>(null)
-    const [currentCanvas, setCurrentCanvas] = useState<HTMLCanvasElement | null>(null)
-    const [connected, setConnected] = useState(false)
-    const roomRef = useRef(room);
-    const playerGridRef = useRef(playerGrid)
-    const enemyGridRef = useRef(enemyGrid)
-
-    const play1Ref = useRef(player1)
-    const play2Ref = useRef(player2)
-
-    useEffect(() => connect(),
-        [roomId])
+    const { start, time, formattedTime, isActive, reset } = useTimer()
+    const { room, addShip, updateRoom, updateOpponent, role, table1, isPlayerTurn } = useGameStore()
 
 
     useEffect(() => {
-        roomRef.current = room
-    }, [room])
-
-    useEffect(() => {
-        play1Ref.current = player1
-    }, [player1])
-
-    useEffect(() => {
-        play2Ref.current = player2
-    }, [player2])
-
-    useEffect(() => {
-        playerGridRef.current = playerGrid
-    }, [playerGrid])
-
-    useEffect(() => {
-        enemyGridRef.current = enemyGrid
-    }, [enemyGrid])
-
-
-    useEffect(() => {
-        if (table1Ref.current) {
-            setCurrentCanvas(table1Ref.current)
+        const handleRoomUpdate = (room) => {
+            updateRoom(room)
+    
         }
-    }, [connected])
+        const handlePlayerJoined = (opponent) => {
+            updateOpponent(opponent)
 
-    useEffect(() => {
-        if (currentCanvas) {
-            handleListeners(currentCanvas)
         }
+
+        const handleCount = (time) => {
+            start(60, 'down',)
+            addShipFunction()
+        }
+
+        const handleSaved = (data) => {
+            console.log(data)
+        }
+
+        const handleStart = () =>{
+            alert('O jogo vai começar...')
+        }
+
+        const handlePlayerTurn = () =>{
+            
+        }
+
+        socket.on('room-update', handleRoomUpdate);
+        socket.on('joined', handlePlayerJoined)
+        socket.on('count', handleCount)
+        socket.on('ships-placed', handleSaved)
+        socket.on('start', handleStart)
+        socket.on('player-turn', handlePlayerTurn)
+
+        socket.emit('ready', ({ roomId, role }))
 
         return () => {
-            if (table1Ref.current) {
-                removeListeners(table1Ref.current)
-            }
-            if (table2Ref.current) {
-                removeListeners(table2Ref.current)
-            }
-        }
-    }, [currentCanvas])
+            socket.off('room-update', handleRoomUpdate);
+            socket.off('joined', handlePlayerJoined)
+            socket.off('count', handleCount)
+            socket.off('saved', handleSaved)
+        };
 
-    useEffect(() => {
-        socket.on('connected', (response) => {
-            const { room, players, id } = response;
+    }, [socket])
 
-            let player1Data = null;
-            let player2Data = null;
-            let player1Grid = null;
-            let player2Grid = null;
+    const addShipFunction = () => {
 
-            players.forEach((player) => {
-                if (player.id === id) {
-                    player1Data = { ...player };
-                    player1Grid = createGrid(player.id, table1Ref.current, player.grid, player.rects);
-                } else {
-                    player2Data = { ...player };
-                    player2Grid = createGrid(player.id, table2Ref.current, player.enemyGrid, {});
-                }
-            });
-
-
-            setPlayer1(player1Data);
-            setPlayerGrid(player1Grid);
-            setPlayer2(player2Data);
-            setEnemyGrid(player2Grid);
-
-            setCurrentCanvas(table1Ref.current);
-
-            setRoom(room);
-            setLoading(false)
-            setConnected(true);
+        addShip({
+            col: 0,
+            row: 0,
+            type: 'Cruiser',
+            orientation: 'horizontal'
         });
-
-        return () => {
-            socket.off('connected');
-        };
-    }, [socket]);
-
-    useEffect(() => {
-        socket.on('joined', (response) => {
-            const { data, players, id } = response
-            players.map((player) => {
-                if (player.id == id) {
-                    setPlayer2(player)
-                    setEnemyGrid(createGrid(player.id, table2Ref.current, player.enemyGrid, {}))
-                }
-            })
-            setRoom(data)
+        addShip({
+            col: 0,
+            row: 4,
+            type: 'Submarine',
+            orientation: 'horizontal'
         })
-    }, [socket])
-
-    useEffect(() => {
-        socket.on('start', (response) => {
-
-            const { turnId } = response
-
-            const newState = { ...roomRef.current, turnId: turnId, started: true, status: 'started' }
-
-            if (play1Ref.current && play1Ref.current.id == turnId) {
-                setPlayerTurn(true)
-                setCurrentCanvas(table2Ref.current)
-                alert('É o seu turno!')
-            } else {
-
-                setPlayerTurn(false)
-                setCurrentCanvas(null)
-            }
-            setRoom({ ...newState })
+        addShip({
+            col: 0,
+            row: 5,
+            type: 'Destroyer',
+            orientation: 'horizontal'
         })
 
-    }, [socket])
 
-    useEffect(() => {
-        socket.on('update', (response) => {
-            const newState = { ...roomRef.current, turnId: response.turnId }
-            if (response.turnId == socket.id) {
-                setPlayerTurn(true)
-                setCurrentCanvas(table2Ref.current)
-            }
-            setRoom(newState)
-        })
-        return () => {
-            socket.off('update');
-        };
-    }, [socket, room])
-
-    useEffect(() => {
-        socket.on('disconnected', ({ id }) => {
-            if (id !== socket.id) {
-                setEnemyGrid(null)
-            }
-        })
-    }, [socket])
-
-    useEffect(() => {
-        socket.on('attack', ({ data }) => {
-            handleAttack(data)
-        })
-    }, [])
-    useEffect(() => {
-        socket.on('restart', (response) => {
-            const { players, room } = response
-            console.log(players, room)
-            const newState = { ...roomRef.current, ...room }
-            players.forEach((player) => {
-                if (player.id === socket.id) {
-                    setPlayerGrid((state) => ({ ...state, grid: player.grid, rects: player.rects }))
-                } else if (player.id == socket.id) {
-                    setPlayer1((state) => ({ ...state }))
-                    setEnemyGrid((state) => ({ ...state, grid: player.enemyGrid, rects: player.eRects }))
-                }
-            })
-            setRoom(newState)
-        })
-    }, [socket])
-    useEffect(() => {
-        socket.on('attack-result', (response) => {
-            const { players, room, targetId, attackerId, hasWinner } = response
-
-            const newState = { ...roomRef.current, ...room }
-
-            players.forEach((player) => {
-                if (player.id === socket.id && player.id == targetId) {
-                    setPlayerGrid((state) => ({ ...state, grid: player.grid, rects: player.rects }))
-                } else if (player.id == socket.id && player.id === attackerId) {
-                    setPlayer1((state) => ({ ...state }))
-                    setEnemyGrid((state) => ({ ...state, grid: player.enemyGrid, rects: player.eRects }))
-                }
-            })
-
-            if (hasWinner) {
-                alert(`O jogador ${room.winnerId} venceu!.`)
-            }
-            if (socket.id == newState.turnId && !hasWinner) {
-                setPlayerTurn(true)
-                setCurrentCanvas(table2Ref.current)
-            } else {
-                setCurrentCanvas(null)
-            }
-            setRoom(newState)
-        })
-    }, [])
-    const restartGame = () => {
-        setRoom((state) => ({ ...state, winnerId: null }))
-        socket.emit('restart', { roomId })
-    }
-    const connect = () => {
-        socket.emit('join', { id: socket.id, roomId: roomId })
-    }
-    const ready = () => {
-        socket.emit('ready', {
-            rects: playerGridRef.current.rects,
-            grid: playerGridRef.current.grid,
-            roomId: room.id
-        })
-    }
-    const attack = (position, targetId, roomId) => {
-        setPlayerTurn(false)
-        socket.emit('attack', { position, targetId, roomId })
     }
 
-    const gameLoopTable1 = (context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-
-        draw(context, canvas, playerGridRef.current)
-    }
-    const gameLoopTable2 = (context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-
-        draw(context, canvas, enemyGridRef.current)
-    }
-    const handleListeners = (table: HTMLCanvasElement) => {
-        table.addEventListener('mousedown', handleMouseDown);
-        table.addEventListener('mousemove', handleMouseMove);
-        table.addEventListener('mouseup', handleMouseUp);
-    }
-
-    const removeListeners = (table: HTMLCanvasElement) => {
-        table.removeEventListener('mousedown', handleMouseDown);
-        table.removeEventListener('mousemove', handleMouseMove);
-        table.removeEventListener('mouseup', handleMouseUp);
-    }
-
-    const getMousePosition = (x: number, y: number) => {
-        if (currentCanvas) {
-            const rect = currentCanvas.getBoundingClientRect()
-            const cords = {
-                x: (x - rect.left) / (rect.right - rect.left) * currentCanvas.width,
-                y: (y - rect.top) / (rect.bottom - rect.top) * currentCanvas.height
-            };
-            const currentCol = Math.floor(cords.x / 40);
-            const currentRow = Math.floor(cords.y / 40);
-            return { col: currentCol, row: currentRow };
+    const save = () => {
+        if (isActive) {
+            reset()
         }
+        socket.emit('place-ships', table1.ships)
     }
-
-    const handleMouseDown = (event: MouseEvent) => {
-        const position = getMousePosition(event.clientX, event.clientY)
-        const currentState = getPlayerFocusTable()
-        if (currentState && position && !isPlayerTurn && !room.started) {
-            const selected = currentState.grid[position.row][position.col].rectId
-            if (selected) {
-                currentState.draggedRect = selected
-                currentState.rects[selected].lastCol = position.col
-                currentState.rects[selected].lastRow = position.row
-                setPlayerGrid(currentState)
-            }
-        } else if (room.started && isPlayerTurn) {
-            attack(position, play2Ref.current.id, room.id)
-        }
-
-    }
-    const handleMouseUp = (event: MouseEvent) => {
-        const currentState = getPlayerFocusTable()
-        if (currentState && currentState.draggedRect) {
-            const draggedRectIndex = currentState.draggedRect
-            const currenctRect = currentState.rects[draggedRectIndex]
-            if (!currentState.grid[currenctRect.row][currenctRect.col].rectId) { //Verifica se a nova posição é 0
-                currentState.grid[currenctRect.lastRow][currenctRect.lastCol].rectId = null  // Limpa a posição anterior
-                currentState.grid[currenctRect.row][currenctRect.col].rectId = draggedRectIndex // Seta o ID do rect na grid
-            } else {
-                // Se não for 0 a posição ele retorna para posição anterior
-                currenctRect.row = currenctRect.lastRow
-                currenctRect.col = currenctRect.lastCol
-                currentState.rects[draggedRectIndex] = currenctRect
-            }
-            currentState.draggedRect = null
-            setPlayerGrid(currentState)
-        }
-    }
-
-    const handleMouseMove = (event: MouseEvent) => {
-        const position = getMousePosition(event.clientX, event.clientY)
-        const currentState = getPlayerFocusTable()
-        if (currentState && position && currentState.draggedRect) {
-            let currentRect = currentState.rects[currentState.draggedRect]
-            currentRect.col = position.col
-            currentRect.row = position.row
-            currentState.rects[currentState.draggedRect] = currentRect
-            setPlayerGrid(currentState)
-        }
-    }
-
-    const getPlayerFocusTable = () => {
-        if (!roomRef.turnId && roomRef.status != 'started') {
-            return playerGrid
-        }
-        if (roomRef.turnId == socket.id) {
-            return enemyGrid
-        }
-        return null
-    }
-
-    const handleAttack = (data) => {
-
-    }
-
-    if (isLoading) return <div> Carregando..</div>
     return (
-        <div className='flex flex-col space-y-2 items-center'>
-            {room.started && (
-                <Label>Turno de {room.turnId}</Label>
-            )}
-            <Label>Player: {player2?.id} </Label>
-            {room.secondPlayer ? (
-                <Canvas height={400} width={400} gameLoop={gameLoopTable2} canvasRef={table2Ref} />
-
-            ) : (
-                <WaitingCard />
-            )}
-            <div className='flex flex-col'>
-                <Label>Player: {player1?.id} </Label>
-                <Canvas height={400} width={400} gameLoop={gameLoopTable1} canvasRef={table1Ref} />
+        <div className='min-h-screen bg-gradient-to-br from-blue-900 via-navy-800 to-blue-900 flex flex-col items-center justify-center p-4 space-y-2'>
+            <h1>{formattedTime}</h1>
+            <h1>{room.status}</h1>
+            <GameInfo />
+            <div className='flex flex-col space-y-2'>
+                <OpponentGrid />
+                <PlayerGrid />
             </div>
-            <Button disabled={room.status == 'started'} onClick={ready}>Pronto</Button>
-            {room.winnerId &&
-                <Button onClick={restartGame}>Jogar Novamente</Button>
-            }
+            <div>
+                <Button onClick={save}>Salvar</Button>
+            </div>
         </div>
     )
 }

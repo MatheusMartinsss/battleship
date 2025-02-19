@@ -10,6 +10,7 @@ interface SocketProviderProps {
 
 export const SocketProvider = ({ children }: SocketProviderProps) => {
     const socket = io(URL);
+    
     return (
         <SocketContext.Provider value= {{ socket }}>
     { children }

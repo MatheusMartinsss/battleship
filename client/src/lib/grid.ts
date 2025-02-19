@@ -3,7 +3,7 @@ import Explosion from '../assets/explosion0.png'
 import Splash from '../assets/Splash.png'
 import Wave from '../assets/Wave.png'
 
-export function createGrid(playerId: string, canvas: any, grid: any, rects: any) {
+export function createGrid(playerId: string, canvas: any, grid: any) {
     const backGround = new Image();
     backGround.src = Water
     const explosion = new Image()
@@ -13,7 +13,6 @@ export function createGrid(playerId: string, canvas: any, grid: any, rects: any)
     const wave = new Image()
     wave.src = Wave
     return {
-        id: playerId,
         position: {
             x: 0,
             y: 0,
@@ -23,9 +22,8 @@ export function createGrid(playerId: string, canvas: any, grid: any, rects: any)
         gridCellSize: 40,
         draggedRect: null,
         lineWidth: 1,
-        rects: rects,
+        rects: [],
         grid: grid,
-        isSecondTable: false,
         backGround: backGround,
         sprites: {
             explosion: explosion,

@@ -6,6 +6,7 @@ const Room = require('./class/room')
 const Player = require('./class/player')
 const server = http.createServer(app);
 const { v4: uuidv4 } = require('uuid');
+const { table } = require('console');
 
 const PORT = 3000 || process.env.PORT;
 
@@ -16,245 +17,202 @@ const io = socket(server, {
     }
 })
 
-let rooms = {}
+const rooms = {}
 let players = {}
 function createInitialMatrix() {
-    return Array.from({ length: 10 }, (row, rowIndex) =>
-        Array.from({ length: 10 }, (col, colIndex) => {
+    return Array.from({ length: 10 }, (_, row) =>
+        Array.from({ length: 10 }, (_, col) => {
             return {
-                id: colIndex + 1,  // Id baseado na posição inicial
+                row,
+                col,
+                id: col + 1,  // Id baseado na posição inicial
                 status: 'inactive',  // Nenhum rect, status inicial é 'inactive'
                 rectId: null,       // Nenhum rect associado
-                hited: false        // Outro atributo que pode ser modificado depois
+                isHit: false,
+                hasShip: false
             };
         })
     );
 }
 
+const initialRoom = {
+    id: null,
+    status: 'waiting',
+    turnId: null,
+    winnerId: null,
+    player1: {
+        id: null,
+        name: "",
+        connected: false,
+        shipsPlaced: false,
+        score: 0,
+    },
+    player2: {
+        id: null,
+        name: "",
+        shipsPlaced: false,
+        connected: false,
+        score: 0,
+    },
+}
 
 io.on('connection', (socket) => {
-    let initialMatrix = createInitialMatrix()
-    let initialEnemyMatrix = createInitialMatrix()
 
-    socket.on('create', () => {
-        const userId = uuidv4();
-        findOrCreateRoom(userId)
-        socket.emit('created', { id: userId })
-    })
-    socket.on('join', (data) => {
-        const { id, roomId } = data
 
-        let room = findOrCreateRoom(roomId)
+    socket.on('create', ({ roomName, playerName }) => {
 
-        if (room.players.length == 2 || room.status == 'started') return
+        const roomId = uuidv4();
 
-        let player = findOrAddPlayer(socket.id, roomId)
-
-        rooms[roomId].addPlayer(player.id)
-
+        if (!rooms[roomId]) {
+            rooms[roomId] = {
+                ...initialRoom,
+                id: roomId,
+                roomName,
+                player1: {
+                    id: socket.id,
+                    name: playerName,
+                    score: 0,
+                    connected: false,
+                },
+            }
+            players[socket.id] = {
+                id: socket.id,
+                name: playerName,
+                role: 'player1',
+                table1: createInitialMatrix(),
+                table2: createInitialMatrix(),
+                playerRects: [],
+                enemyRects: [],
+                isReady: false,
+                roomId: roomId
+            }
+        }
         socket.join(roomId)
+        socket.emit('created', { room: rooms[roomId], player: players[socket.id], role: 'player1' })
+    })
+    socket.on('join', ({ roomCode, playerName }) => {
 
-        socket.emit('connected', { room, players: findPlayersByRoom(roomId, socket.id), id: socket.id });
+        const room = rooms[roomCode]
 
-        socket.to(roomId).emit('joined', { data: room, players: findPlayersByRoom(roomId, socket.id), id: socket.id })
+        if (!room) {
+            socket.emit('join-error', { error: { message: "Sala não encontrada!" } })
+            return
+        }
+        room.status = 'placing'
+        room.player2 = {
+            id: socket.id,
+            name: playerName,
+            score: 0,
+            connected: false
+        }
+        players[socket.id] = {
+            id: socket.id,
+            name: playerName,
+            role: 'player2',
+            table1: createInitialMatrix(),
+            table2: createInitialMatrix(),
+            playerShips: [],
+            enemyShips: [],
+            isReady: false,
+            roomId: roomCode
+        }
+
+        socket.join(roomCode)
+
+        socket.to(roomCode).emit('joined', { player: players[socket.id] });
+
+        socket.emit('joined', { room, player: players[socket.id], opponent: players[room.player1.id], role: 'player2' });
+
+        io.in(roomCode).emit('room-update', room);
+
     })
 
 
-    socket.on('ready', (request) => {
-        const { rects, grid, roomId } = request
-
-        players[socket.id].rects = rects
-        players[socket.id].grid = grid
-        players[socket.id].isReady = true
-
-        socket.to(roomId).emit('ready', { id: socket.id })
-
-        if (verifyallPlayersIsReady(roomId)) {
-            startGame(roomId)
+    socket.on('ready', ({ roomId, role }) => {
+        const room = rooms[roomId]
+        room[role].connected = true
+        if (room && room.player1.connected && room.player2.connected) {
+            io.in(room.id).emit('count', { time: 10 });
         }
+
+
     })
-    socket.on('attack', (request) => {
-        const { position, targetId, roomId } = request
+    socket.on('place-ships', (data) => {
 
-        const { players, room } = handleAttack(socket.id, targetId, position, roomId)
-        let hasWinner = false;
-        if (room.winnerId) {
-            hasWinner = true
+        const player = players[socket.id];
+        const room = rooms[player.roomId]
+
+        if (!player) return;
+
+        const newGrid = player.table1.map(row => row.map(cell => ({ ...cell })));
+        const errors = [];
+
+        data.forEach((ship) => {
+
+            ship.positions.map(({ row, col }) => {
+                if (row >= 10 || col >= 10) {
+                    errors.push(`Ship ${ship.type} out of bounds`);
+                    return;
+                }
+
+                // Check collisions
+                if (newGrid[col][row].hasShip) {
+                    errors.push(`Ship ${ship.type} collides at (${row},${col})`);
+                    return;
+                }
+                newGrid[col][row] = {
+                    ...newGrid[col][row],
+                    rectId: ship.type,
+                    hasShip: true
+                };
+            })
+        });
+
+        if (errors.length > 0) {
+            socket.emit('placing-error', { errors });
+            return;
         }
-        io.in(roomId).emit('attack-result', { players, room, targetId, attackerId: socket.id, hasWinner })
+
+        player.table1 = newGrid;
+        player.playerShips = data;
+        room[player.role].shipsPlaced = true
+
+        socket.emit('ships-placed', {
+            success: true,
+            grid: newGrid
+        });
+
+        if (room.player1.shipsPlaced && room.player2.shipsPlaced) {
+            room.turnId = room.player1.id
+            room.status = 'battling'
+            io.in(room.id).emit('start')
+        }
+        io.in(room.id).emit('room-update', room);
+    })
+
+    socket.on('attack', ({targetId, positions}) => {
+        const player = players[socket.id]
+
+        const room = rooms[player.roomId]
+
+        room.turnId = room.turnId == room.player1.id ? room.player2.id : room.player1.id
+
+
+        io.in(room.id).emit('room-update', room);
+
     })
 
     socket.on('restart', (request) => {
-        const { roomId } = request
 
-        let room = findOrCreateRoom(roomId)
-
-
-        room.status = 'waiting'
-        room.winnerId = null
-        room.turnId = null
-        resetMatrix()
-
-        const playersRoom = findPlayersByRoom(roomId)
-
-        playersRoom.map((player) => {
-            return players[player.id] = generatePlayer(player.id, player.roomId)
-        })
-
-        io.in(roomId).emit('restart', { players: findPlayersByRoom(roomId), room })
 
 
     })
 
     socket.on('disconnect', () => {
-        onPlayerLeave(socket.id)
+        //  onPlayerLeave(socket.id)
     })
 
-    function startGame(roomId) {
-        const room = findOneRoom(roomId)
-        room.status = 'started'
-        room.turnId = room.firstPlayer
-        io.to(roomId).emit('start', { turnId: room.turnId })
-    }
 
-    function findOrCreateRoom(roomId) {
-        if (!rooms[roomId]) {
-            rooms[roomId] = new Room({ id: roomId })
-        }
-        return rooms[roomId]
-    }
-    function findOrAddPlayer(playerId, roomId) {
-        if (!players[playerId]) {
-            // Inicializa o jogador com o grid vazio
-            const player = generatePlayer(playerId, roomId)
-            players[playerId] = player; // Salva o jogador na lista de players
-        }
-        return players[playerId];
-    }
-    function generatePlayer(playerId, roomId) {
-        return new Player({
-            id: playerId,
-            roomId,
-            name: '',
-            score: 0,
-            grid: initialMatrix,
-            enemyGrid: initialEnemyMatrix,
-            eRects: {},
-            rects: {
-                [1]: generateRect(1, initialMatrix),
-                [2]: generateRect(2, initialMatrix),
-                [3]: generateRect(3, initialMatrix),
-                [4]: generateRect(4, initialMatrix)
-            },
-            status: 'waiting',
-        });
-    }
-    function findPlayersByRoom(roomId, playerId) {
-        const ids = rooms[roomId].players;
-        return ids.map((id) => {
-            return players[id]
-        });
-    }
-    function generateRect(rectId, matrix) {
-        const randomCol = Math.floor(Math.random() * 10);
-        const randomRow = Math.floor(Math.random() * 10);
-        matrix[randomRow][randomCol].rectId = rectId
-        return {
-            col: randomCol,
-            row: randomRow,
-            lastCol: randomCol,
-            lastRow: randomRow,
-            height: 40,
-            width: 40,
-            status: 'alive',
-            color: 'red',
-            size: 2
-        }
-    }
-    function findOneRoom(roomId) {
-        return rooms[roomId]
-    }
-    function findOnePlayer(playerId) {
-        return players[playerId]
-    }
-
-    function onPlayerLeave(playerId) {
-        const player = players[playerId]
-        if (!player) return
-
-        const room = rooms[player.roomId]
-
-        delete players[playerId]
-
-        room.removePlayer(playerId)
-
-        io.to(player.roomId).emit('disconnected', {
-            id: player.id
-        })
-    }
-    function verifyallPlayersIsReady(roomId) {
-        const players = findPlayersByRoom(roomId)
-        return Object.values(players).every(player => player.isReady === true);
-    }
-    function verifyAttack(attackerId, targetId, position) {
-
-        const target = findOnePlayer(targetId)
-        const hitRect = Object.values(target.rects).find((rect) => rect.col == position.col && rect.row == position.row);
-        return {
-            hited: !!hitRect,
-            position: position,
-            rectHit: hitRect || null,
-            attackerId,
-            targetId,
-            nextTurnId: targetId
-        }
-    }
-
-    function handleAttack(playerId, targetID, position, roomId) {
-
-        let { col, row } = position
-        let player = findOnePlayer(playerId)
-        let target = findOnePlayer(targetID)
-        let room = rooms[roomId]
-        const rectHitedId = target.grid[row][col].rectId
-
-        if (rectHitedId) {
-            target.rects[rectHitedId] = handleHitRect(target.rects[rectHitedId])
-            player.score++;
-        }
-        if (player.score == 4) {
-            room.winnerId = player.id
-        }
-
-        target.grid[row][col] = handleHitGrid(target.grid[row][col], rectHitedId)
-        player.enemyGrid[row][col] = handleHitGrid(target.enemyGrid[row][col], rectHitedId)
-        let newERects = { ...player.eRects, [rectHitedId]: target.rects[rectHitedId] }
-        player.eRects = newERects
-
-        room.turnId = targetID
-
-        players[targetID] = target
-        players[playerId] = player
-        rooms[roomId] = room
-
-        const playersUpdated = findPlayersByRoom(roomId)
-        return {
-            players: playersUpdated,
-            room
-        }
-
-    }
-    function handleHitGrid(grid, rectId) {
-        return { ...grid, hited: true, rectId }
-    }
-
-    function handleHitRect(rect) {
-        return { ...rect, status: 'exploded' }
-    }
-    function resetMatrix() {
-        initialMatrix = createInitialMatrix();  // Restaura a matriz ao estado inicial
-        initialEnemyMatrix = createInitialMatrix();
-    }
 })
 
 

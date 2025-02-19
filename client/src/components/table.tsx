@@ -5,6 +5,7 @@ interface CanvasProps {
     canvasRef: RefObject<HTMLCanvasElement>
     height?: number;
     width?: number;
+
 }
 
 export default function Canvas({ height = 500, width = 500, gameLoop, canvasRef }: CanvasProps) {
@@ -33,5 +34,5 @@ export default function Canvas({ height = 500, width = 500, gameLoop, canvasRef 
         return () => cancelAnimationFrame(frameRef.current);
     }, [height, width]);
 
-    return <canvas style={{ width: width, height: height }} ref={canvasRef} />;
+    return <canvas style={{ width: width, height: height }}  ref={canvasRef} />;
 }

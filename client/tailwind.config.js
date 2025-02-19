@@ -17,6 +17,18 @@ module.exports = {
       },
     },
     extend: {
+      boxShadow: {
+        'green-glow': '0 0 25px 5px rgba(34, 197, 94, 0.3)',
+      },
+      animation: {
+        'pulse-shadow': 'pulse-glow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+      },
+      keyframes: {
+        'pulse-glow': {
+          '0%, 100%': { 'box-shadow': '0 0 0 0 rgba(34, 197, 94, 0.3)' },
+          '70%': { 'box-shadow': '0 0 0 15px rgba(34, 197, 94, 0)' }
+        }
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
