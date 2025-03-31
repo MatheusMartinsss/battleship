@@ -1,6 +1,6 @@
 import Canvas from "./table"
 import { useEffect, useRef, useState } from 'react'
-import { useGameStore } from "@/context/gameStore"
+import { useGameStore, useIsPlayerTurn } from "@/context/gameStore"
 
 type mousePos = {
     x: number;
@@ -10,9 +10,10 @@ type mousePos = {
 const PlayerGrid = () => {
     const tableRef = useRef<HTMLCanvasElement>(null)
     const [draggedShip, setDraggedShip] = useState<any | null>(null)
-    const { table1, moveShip, placeShip, room, role, isPlayerTurn } = useGameStore()
-    const isPlacing = room.status == 'placing'
-    const shipsPlaced = room[role].shipsPlaced || false
+    const { table1, moveShip, placeShip, room,  } = useGameStore()
+    const isPlayerTurn = useIsPlayerTurn()
+    const isPlacing = room?.status == 'placing'
+
     useEffect(() => {
         if (tableRef.current && isPlacing) {
             handleListeners()
@@ -96,11 +97,11 @@ const PlayerGrid = () => {
 
     function draw(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, gameState: ReturnType<typeof useGameStore.getState>) {
 
-        const { table1, isPlayerTurn, room } = gameState;
+        const { table1 } = gameState;
         const { gridCellSize, ships, grid } = table1
         // Clear and draw background
 
-        if (isPlayerTurn && room.status == 'battling') {
+        if (isPlayerTurn) {
             canvas.style.border = '3px solid #22c55e'; // Using green color to match shadow
             canvas.style.boxShadow = '0 0 25px 5px rgba(34, 197, 94, 0.3)';
             canvas.style.transition = 'all 0.3s ease'; // Add smooth transition
@@ -128,24 +129,11 @@ const PlayerGrid = () => {
             // Determine orientation
             const isHorizontal = (maxCol - minCol) > (maxRow - minRow);
 
-            const width = ship.orientation === 'horizontal'
-                ? ship.size * gridCellSize
-                : gridCellSize;
-
-            const height = ship.orientation === 'vertical'
-                ? ship.size * gridCellSize
-                : gridCellSize;
 
             // Draw ship body
 
             context.fillStyle = ship.isSunk ? '#555' : '#1e40af';
-            /*   context.drawImage(
-                   ship.sprite,  // Source image
-                   minCol * gridCellSize,        // X position
-                   minRow * gridCellSize,        // Y position
-                   width,                        // Destination width
-                   height                        // Destination height
-               );*/
+
             context.fillRect(
                 minCol * gridCellSize,
                 minRow * gridCellSize,
@@ -200,9 +188,6 @@ const PlayerGrid = () => {
                     gridCellSize
                 );
 
-                context.fillText(cell.rectId, col * gridCellSize,
-                    row * gridCellSize)
-
             }
         }
 
@@ -211,10 +196,7 @@ const PlayerGrid = () => {
     }
 
     return (
-        <>
-            {isPlayerTurn && <h1>É seu turno</h1>}
-            <Canvas height={400} width={400} gameLoop={gameLoop} canvasRef={tableRef} />
-        </>
+        <Canvas height={400} width={400} gameLoop={gameLoop} canvasRef={tableRef} />
     )
 
 }

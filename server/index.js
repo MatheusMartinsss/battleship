@@ -19,6 +19,12 @@ const io = socket(server, {
 
 const rooms = {}
 let players = {}
+const events = {
+    joined: 'joined',
+    start: 'start',
+    update: 'update',
+    reset: 'reset'
+}
 function createInitialMatrix() {
     return Array.from({ length: 10 }, (_, row) =>
         Array.from({ length: 10 }, (_, col) => {
@@ -40,6 +46,7 @@ const initialRoom = {
     status: 'waiting',
     turnId: null,
     winnerId: null,
+    players: [],
     player1: {
         id: null,
         name: "",
@@ -56,9 +63,26 @@ const initialRoom = {
     },
 }
 
+const initialPlayer = {
+    id: null,
+    connected: false,
+    score: 0,
+    name: '',
+    ready: false,
+    roomId: null,
+    tableId: null
+}
+
+const initialTable = {
+    id: null,
+    playerId: null,
+    grid: createInitialMatrix(),
+    ships: [],
+}
+
 io.on('connection', (socket) => {
 
-
+    console.log(socket)
     socket.on('create', ({ roomName, playerName }) => {
 
         const roomId = uuidv4();
@@ -68,6 +92,11 @@ io.on('connection', (socket) => {
                 ...initialRoom,
                 id: roomId,
                 roomName,
+                players: [{
+                    ...initialPlayer,
+                    id: socket.id,
+                    roomId
+                }],
                 player1: {
                     id: socket.id,
                     name: playerName,
@@ -114,7 +143,7 @@ io.on('connection', (socket) => {
             playerShips: [],
             enemyShips: [],
             isReady: false,
-            roomId: roomCode
+            roomId: room.id
         }
 
         socket.join(roomCode)
@@ -128,8 +157,11 @@ io.on('connection', (socket) => {
     })
 
 
-    socket.on('ready', ({ roomId, role }) => {
+    socket.on('ready', ({ roomId }) => {
         const room = rooms[roomId]
+
+        const role = getPlayerRole(roomId, socket.id)
+        console.log(role)
         room[role].connected = true
         if (room && room.player1.connected && room.player2.connected) {
             io.in(room.id).emit('count', { time: 10 });
@@ -187,19 +219,47 @@ io.on('connection', (socket) => {
             room.status = 'battling'
             io.in(room.id).emit('start')
         }
-        io.in(room.id).emit('room-update', room);
+        io.in(room.id).emit('room-update', room, event = events.start);
+        io.in(room.id).emit('turn-update',)
     })
 
-    socket.on('attack', ({targetId, positions}) => {
+    socket.on('attack', ({ positions }) => {
+        const { col, row } = positions
         const player = players[socket.id]
-
         const room = rooms[player.roomId]
+        const target = room.player1.id == player.id ? players[room.player2.id] : players[room.player1.id]
+        const role = getPlayerRole(room.id, socket.id)
 
+
+        //verify if is player turn
+        if (room.turnId !== socket.id) {
+            socket.emit('attacking-error', { message: `Turno de ${room.turnId}`, error: 'unauthorized' })
+            return
+        }
+
+        if (row >= 10 || col >= 10 || target.table1[col][row].isHit) {
+            socket.emit('attacking-error', { message: `Ataque invalido`, error: 'badrequest' })
+            return
+        }
+
+        //update targer table
+        target.table1[col][row].isHit = true
+        //update attacker view table2
+        player.table2[col][row].isHit = true
+        if (target.table1[col][row].hasShip) {
+            room[role].score++;
+            const shipsCopy = [...target.playerShips]
+            target.playerShips = checkSunkShip(shipsCopy, target.table1)
+        }
+        if (checkAllShipsIsSunk(target.playerShips)) {
+            io.in(room.id).emit('winner', { winnerId: socket.id })
+        }
+        //update turn 
         room.turnId = room.turnId == room.player1.id ? room.player2.id : room.player1.id
-
-
+        socket.emit('attack-update', player)
+        io.to(target.id).emit('hit-update', target)
+        io.in(room.id).emit('turn-update', { turnId: room.turnId })
         io.in(room.id).emit('room-update', room);
-
     })
 
     socket.on('restart', (request) => {
@@ -212,7 +272,21 @@ io.on('connection', (socket) => {
         //  onPlayerLeave(socket.id)
     })
 
+    function getPlayerRole(roomId, id) {
+        const room = rooms[roomId]
+        if (!room) return
+        return room.player1.id == id ? 'player1' : 'player2'
+    }
 
+    function checkSunkShip(ships, grid) {
+        return ships.map((ship) => {
+            const isSunk = ship.positions.every(pos => grid[pos.col][pos.row].isHit)
+            return { ...ship, isSunk }
+        })
+    }
+    function checkAllShipsIsSunk(ships) {
+        return ships.every(ship => ship.isSunk)
+    }
 })
 
 

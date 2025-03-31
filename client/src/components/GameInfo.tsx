@@ -1,11 +1,14 @@
-import { useGameStore } from '@/context/gameStore'
+import { useGameStore, useNamePlayerAttacking } from '@/context/gameStore'
 import { motion } from 'framer-motion'
 
+
 const GameInfo = () => {
-    const { room, currentPlayer, turnId } = useGameStore()
+    const { room } = useGameStore()
+    const namePlayerAttacking = useNamePlayerAttacking()
+
 
     const render = () => {
-        switch (room.status) {
+        switch (room?.status) {
             case 'waiting':
                 return (
                     <motion.div /* existing animation */>
@@ -35,7 +38,7 @@ const GameInfo = () => {
                         <div className="flex items-center gap-4">
                             <div className="h-3 w-3 animate-ping rounded-full bg-green-400" />
                             <h1 className="text-2xl font-bold">
-                                Turno de {room.turnId}
+                                Turno de {namePlayerAttacking }
                             </h1>
                         </div>
                     </motion.div>
@@ -51,6 +54,8 @@ const GameInfo = () => {
 
     return (
         <div>
+            Player1 Score: {room?.player1.score}
+            Player2 Score: {room?.player2.score}
             {render()}
         </div>
     )

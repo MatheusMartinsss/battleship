@@ -9,18 +9,22 @@ import carrier from '../assets/Ships/Carrier/Carrier.png'
 import submarine from '../assets/Ships/Submarine/Submarine.png'
 import patrol from '../assets/Ships/PatrolBoat/Patrol.png'
 
+
+type orientation = 'horizontal' | 'vertical';
+
 type ShipType = {
     id: number;
     size: number;
     type: "Destroyer" | "Submarine" | "Patrol" | "Carrier" | "Cruiser"
     sprite: any
-    orientation: 'horizontal' | 'vertical';
+    orientation: orientation;
 };
+
 
 type PlaceShipParams = {
     col: number;
     row: number;
-    ship: ShipType;
+    id: number;
 };
 
 
@@ -45,8 +49,9 @@ type Cell = {
 
 type Ship = {
     id: number;
-    lasPositions: Array<{ row: number; col: number }>;
+    lastPositions: Array<{ row: number; col: number }>;
     positions: Array<{ row: number; col: number }>;
+    orientation: orientation;
     size: number;
     isSunk: boolean;
 };
@@ -68,8 +73,6 @@ type Room = {
     turnId: string | null;
     winnerId: string | null;
 };
-
-
 
 type PlayerTable = {
     position: any,
@@ -111,11 +114,19 @@ type GameState = {
     currentPlayer: Player | null;
     opponent: Player | null;
     currentCanvas: HTMLCanvasElement | null
+    isPlayerTurn: boolean
     table2: PlayerTable
     table1: PlayerTable
-    joinRoom: (room: Room, player: Player) => void;
-    placeShip: ({ col, row, ship }) => void
-    moveShip: (col: number, row: number, shipId: number) => void
+    role: string;
+    addShip: ({ id, col, row, type, orientation }: { id: number, col: number, row: number, type: ShipType['type'], orientation: orientation }) => void
+    joinRoom: (room: Room, player: Player, opponent: Player, role: string) => void;
+    placeShip: ({ col, row, id }: PlaceShipParams) => void
+    moveShip: ({ col, row, shipId }: { col: number, row: number, shipId: number }) => void
+    updateOpponent: (data: Player) => void
+    updateRoom: (data: Room) => void
+    updatePlayerTable: (data: any) => void
+    updateEnemyTable: (data: any) => void
+
 };
 
 const createEmptyGrid = () =>
@@ -197,7 +208,8 @@ export function createGrid() {
     }
 }
 
-export const useGameStore = create((set, get) => ({
+
+export const useGameStore = create<GameState>((set, get) => ({
     // Initial state
     room: null,
     currentPlayer: null,
@@ -220,9 +232,9 @@ export const useGameStore = create((set, get) => ({
         });
     },
 
-    addShip: ({ col, row, type, orientation }) => {
+    addShip: ({ id, col, row, type, orientation }) => {
 
-        const { table1, sprites } = get();
+        const { table1 } = get();
 
         const positions = [];
 
@@ -257,18 +269,17 @@ export const useGameStore = create((set, get) => ({
         positions.forEach(pos => {
             newGrid[pos.col][pos.row] = {
                 ...newGrid[pos.col][pos.row],
-                rectId: type,
+                rectId: id,
                 hasShip: true
             };
         });
 
         const updatedShip = {
-            id: type,
+            id: id,
             lastPositions: positions,
             positions,
             size: shipSize,
             type: type,
-            sprite: sprites[type],
             orientation: orientation,
             isSunk: false
         };
@@ -284,13 +295,12 @@ export const useGameStore = create((set, get) => ({
         });
     },
     placeShip: ({ col, row, id }: PlaceShipParams) => {
-        const { table1, sprites } = get();
+        const { table1 } = get();
 
 
         const newShips = [...table1.ships];
 
-        const existingShipIndex = newShips.findIndex(s => s.id === id);
-
+        const existingShipIndex = newShips.findIndex(s => s.id == id);
 
         const ship = newShips[existingShipIndex]
         // 1. Calculate all positions the ship will occupy
@@ -412,7 +422,7 @@ export const useGameStore = create((set, get) => ({
         })
     },
     updateRoom: (data) => {
-        const { room, updatePlayerTurn } = get();
+        const { room } = get();
 
         set({
             room: {
@@ -420,25 +430,47 @@ export const useGameStore = create((set, get) => ({
                 ...data
             }
         })
-        if (data.status == 'battling') {
-            updatePlayerTurn()
-        }
     },
 
     getOpponentStatus: () => {
         const { role, room } = get()
-        
-        if (role == 'player1') {
-            return room.player2
-        }
-        return room.player1
+        return role == 'player1' ? room?.player1 : room?.player2
 
     },
-    updatePlayerTurn: () => {
-        const { room, currentPlayer } = get()
+
+    updateEnemyTable: (data) => {
+        const { table2 } = get()
         set({
-            isPlayerTurn: room.status == 'battling' && room.turnId == currentPlayer.id ? true : false
+            table2: {
+                ...table2,
+                grid: data
+            }
+        })
+    },
+    updatePlayerTable: (data) => {
+        const { table1 } = get();
+        set({
+
+            table1: {
+                ...table1,
+                grid: data
+            }
         })
     }
 
 }));
+
+export const useIsPlayerTurn = () =>
+    useGameStore((state) => {
+        // Verifica se há uma sala, se o status é 'battling' e se há um jogador atual
+        if (!state.room || state.room.status !== 'battling' || !state.currentPlayer) {
+            return false;
+        }
+
+        // Verifica se o ID do jogador atual corresponde ao ID do turno na sala
+        return state.room.turnId === state.currentPlayer.id;
+    });
+
+export const useNamePlayerAttacking = () => useGameStore((state) => {
+    return state.room?.player1.id == state.room?.turnId ? state.room?.player1.name : state.room?.player2.name
+})

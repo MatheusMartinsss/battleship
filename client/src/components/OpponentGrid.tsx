@@ -1,11 +1,13 @@
 import Canvas from "./table"
 import { useEffect, useRef, useState } from 'react'
-import { useGameStore } from "@/context/gameStore"
+import { useGameStore, useIsPlayerTurn } from "@/context/gameStore"
 import { WaitingCard } from "./waitingPlayer"
 import { useSocket } from '../context/useSocket'
+
 const OpponentGrid = () => {
     const tableRef = useRef<HTMLCanvasElement>(null)
-    const { opponent, table2, role, room, getOpponentStatus, isPlayerTurn } = useGameStore()
+    const { opponent, table2 } = useGameStore()
+    const isPlayerTurn = useIsPlayerTurn()
     const { socket } = useSocket()
 
     useEffect(() => {
@@ -49,7 +51,8 @@ const OpponentGrid = () => {
 
     const handleMouseDown = (event: MouseEvent) => {
         const position = getMousePosition(event.clientX, event.clientY)
-        socket.emit('attack')
+        console.log(position)
+        socket.emit('attack', { positions: position })
 
     }
     const handleMouseUp = (event: MouseEvent) => {
@@ -67,11 +70,10 @@ const OpponentGrid = () => {
         draw(context, canvas, currentState)
     }
 
-
     function draw(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, gameState: any) {
 
-        const { table2, isPlayerTurn, room } = gameState;
-        const { gridCellSize, ships, grid } = table2
+        const { table2 } = gameState;
+        const { grid, gridCellSize } = table2
 
         context.drawImage(table2.backGround, 0, 0, canvas.width, canvas.height);
 
@@ -82,9 +84,20 @@ const OpponentGrid = () => {
 
         for (let row = 0; row < 10; row++) {
             for (let col = 0; col < 10; col++) {
-                const hited = table2.grid[row][col].isHit;
-                const rectId = table2.grid[row][col].rectId;
-                //   const rect = playerTable.rects[rectId];
+                const cell = grid[col][row];
+
+                if (cell.isHit) {
+                    context.beginPath();
+                    context.fillStyle = cell.rectId ? '#dc2626' : '#3b82f6';
+                    context.arc(
+                        (col + 0.5) * gridCellSize,
+                        (row + 0.5) * gridCellSize,
+                        gridCellSize / 4,
+                        0,
+                        Math.PI * 2
+                    );
+                    context.fill();
+                }
                 // Desenha a box (célula)
                 context.strokeRect(col * table2.gridCellSize, row * table2.gridCellSize, table2.gridCellSize, table2.gridCellSize);
 
@@ -102,9 +115,9 @@ const OpponentGrid = () => {
         </div>
     )
     return (
-        <div className={`relative ${!isPlayerTurn && room.status == 'battling'
-                ? 'animate-pulse-shadow border-2 border-green-400 rounded-lg'
-                : ''}`}>
+        <div className={`relative ${!isPlayerTurn
+            ? 'animate-pulse-shadow border-2 border-green-400 rounded-lg'
+            : ''}`}>
 
             <Canvas
                 height={400}
