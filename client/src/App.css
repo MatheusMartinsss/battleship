@@ -48,9 +48,36 @@
   from {
     mask-position: 150%;
   }
+
   to {
     mask-position: -50%;
   }
+}
+
+@keyframes pulse-shadow {
+  0% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3),
+      0 0 30px rgba(239, 68, 68, 0.2),
+      0 0 45px rgba(239, 68, 68, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.5),
+      0 0 45px rgba(239, 68, 68, 0.3),
+      0 0 65px rgba(239, 68, 68, 0.2);
+  }
+
+  100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3),
+      0 0 30px rgba(239, 68, 68, 0.2),
+      0 0 45px rgba(239, 68, 68, 0.1);
+  }
+}
+
+.animate-pulse-shadow {
+  animation: pulse-shadow 1.5s ease-in-out infinite;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 0.5rem;
 }
 
 .animate-shine {

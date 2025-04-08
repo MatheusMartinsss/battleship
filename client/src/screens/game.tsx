@@ -13,7 +13,7 @@ import { WinnerInfo } from '@/components/WinnerInfo';
 function Game() {
     const { socket } = useSocket()
     const { roomId } = useParams(); // Acessa o parâmetro da rota
-    const { start, time, formattedTime, isActive, reset } = useTimer()
+    const { start, formattedTime, isActive, reset } = useTimer()
     const { room, addShip, updateRoom, updateOpponent, role, table1, updateEnemyTable, updatePlayerTable, updatePlayer, resetGame } = useGameStore()
     const [winnerAlert, setWinner] = useState(false)
 
@@ -27,7 +27,7 @@ function Game() {
 
         }
 
-        const handleCount = (time: any) => {
+        const handleCount = () => {
             start(60, 'down',)
             addShipFunction()
         }
@@ -43,24 +43,25 @@ function Game() {
 
         }
         const onAttack = (data: any) => {
+            console.log(data.table2)
             updateEnemyTable(data.table2)
         }
         const onTakeHit = (data: any) => {
             updatePlayerTable(data.table1)
         }
-        const handleWinner = (data: any) => {
+        const handleWinner = () => {
             setWinner(true)
         }
 
-        const handleReset = (data: any) => {
+        const handleReset = () => {
             resetGame()
-            handleCount(60)
+            handleCount()
         }
         const handleGameUpdate = (data: any) => {
             updateOpponent(data.opponent)
             updatePlayer(data.player)
             updateRoom(data.room)
-           
+
         }
 
 
@@ -140,7 +141,60 @@ function Game() {
                 <PlayerGrid />
             </div>
             <div>
-                <Button variant='default' onClick={save}>Salvar</Button>
+                {room?.status == 'placing' &&
+                    <Button
+                        onClick={save}
+                        className="bg-gradient-to-br from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 active:scale-[0.98] border-2 border-white/20 text-lg font-bold tracking-wide text-white hover:text-emerald-50 shadow-md hover:shadow-lg                        
+    transition-all duration-800                      
+    px-8 py-4                                        
+    rounded-md                                   
+    relative overflow-hidden                        
+    group                                       
+    animate-pulse"
+                    >
+                        <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
+                        <span className="relative z-10 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 text-emerald-200"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2">
+                                <path d="M5 13l4 4L19 7" />
+                            </svg>
+                            FROTA PRONTA!
+                        </span>
+                        {/* Efeito de "radar" desativado após confirmação */}
+                        <span className="absolute top-0 -right-8 w-8 h-full bg-white/20 skew-x-12 animate-radar-sweep" />
+                    </Button>
+                }
+                {room?.status == 'finished' &&
+                    <Button
+                        onClick={handlePlayAgain}
+                        className="bg-gradient-to-br from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 active:scale-[0.98] border-2 border-white/20 text-lg font-bold tracking-wide text-white hover:text-emerald-50 shadow-md hover:shadow-lg                        
+    transition-all duration-800                      
+    px-8 py-4                                        
+    rounded-md                                   
+    relative overflow-hidden                        
+    group                                       
+    animate-pulse"
+                    >
+                        <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-30 transition-opacity duration-300" />
+                        <span className="relative z-10 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 text-emerald-200"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2">
+                                <path d="M5 13l4 4L19 7" />
+                            </svg>
+                            JOGAR NOVAMENTE
+                        </span>
+                        {/* Efeito de "radar" desativado após confirmação */}
+                        <span className="absolute top-0 -right-8 w-8 h-full bg-white/20 skew-x-12 animate-radar-sweep" />
+                    </Button>
+                }
             </div>
         </div>
     )

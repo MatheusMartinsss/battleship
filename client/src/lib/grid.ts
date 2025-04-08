@@ -18,6 +18,7 @@ export function createGrid(playerId: string, canvas: any, grid: any) {
             y: 0,
         },
         width: 400,
+        id: playerId,
         height: 400,
         gridCellSize: 40,
         draggedRect: null,
@@ -100,14 +101,3 @@ function drawGrid(context: CanvasRenderingContext2D, grid: any) {
     context.restore();
 }
 
-function drawRect(rect: Rect, context: CanvasRenderingContext2D, grid: any) {
-    if (rect.status == 'exploded') {
-        console.log('exploded')
-        context.fillStyle = 'yellow'
-    } else {
-        context.fillStyle = rect.color
-
-    }
-    context.fillRect((rect.col * grid.gridCellSize), (rect.row * grid.gridCellSize), rect.width, rect.height)
-
-}

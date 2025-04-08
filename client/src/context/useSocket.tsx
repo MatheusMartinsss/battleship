@@ -1,7 +1,7 @@
-import React, { ReactNode, createContext, useContext } from 'react';
+import { ReactNode, createContext, useContext } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const URL = 'http://localhost:3000/' || process.env.API_URL;
+const URL = process.env.API_URL || '';
 const SocketContext = createContext<{ socket: Socket } | null>(null);
 
 interface SocketProviderProps {
@@ -10,11 +10,11 @@ interface SocketProviderProps {
 
 export const SocketProvider = ({ children }: SocketProviderProps) => {
     const socket = io(URL);
-    
+
     return (
-        <SocketContext.Provider value= {{ socket }}>
-    { children }
-    </SocketContext.Provider>
+        <SocketContext.Provider value={{ socket }}>
+            {children}
+        </SocketContext.Provider>
     );
 };
 

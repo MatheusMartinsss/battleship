@@ -1,5 +1,5 @@
 import Canvas from "./table"
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useGameStore, useIsPlayerTurn } from "@/context/gameStore"
 import { WaitingCard } from "./waitingPlayer"
 import { useSocket } from '../context/useSocket'
@@ -51,16 +51,15 @@ const OpponentGrid = () => {
 
     const handleMouseDown = (event: MouseEvent) => {
         const position = getMousePosition(event.clientX, event.clientY)
-        console.log(position)
         socket.emit('attack', { positions: position })
 
     }
-    const handleMouseUp = (event: MouseEvent) => {
+    const handleMouseUp = () => {
 
     }
 
-    const handleMouseMove = (event: MouseEvent) => {
-        const position = getMousePosition(event.clientX, event.clientY)
+    const handleMouseMove = () => {
+     
 
     }
 
@@ -115,10 +114,7 @@ const OpponentGrid = () => {
         </div>
     )
     return (
-        <div className={`relative ${!isPlayerTurn
-            ? 'animate-pulse-shadow border-2 border-green-400 rounded-lg'
-            : ''}`}>
-
+        <div className={`relative ${!isPlayerTurn ? 'animate-pulse-shadow' : ''}`}>
             <Canvas
                 height={400}
                 width={400}
@@ -126,7 +122,6 @@ const OpponentGrid = () => {
                 canvasRef={tableRef}
 
             />
-
         </div>
     )
 

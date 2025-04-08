@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 
-type TimerOptions = {
-    duration: number;
-    onComplete?: () => void;
-    direction?: "up" | "down";
-};
+
 
 export const useTimer = () => {
     const [time, setTime] = useState(0);

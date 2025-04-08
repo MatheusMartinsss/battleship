@@ -1,4 +1,5 @@
 const express = require('express');
+require('dotenv').config()
 const app = express();
 const http = require('http');
 const socket = require('socket.io');
@@ -252,6 +253,8 @@ io.on('connection', (socket) => {
         if (target.table1[col][row].hasShip) {
             room[role].score++;
             const shipsCopy = [...target.playerShips]
+            player.table2[col][row].hasShip = true
+            player.table2[col][row].rectId = target.table1[col][row].rectId
             target.playerShips = checkSunkShip(shipsCopy, target.table1)
         }
         //update turn 

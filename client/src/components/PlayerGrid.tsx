@@ -2,15 +2,11 @@ import Canvas from "./table"
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore, useIsPlayerTurn } from "@/context/gameStore"
 
-type mousePos = {
-    x: number;
-    y: number;
-}
 
 const PlayerGrid = () => {
     const tableRef = useRef<HTMLCanvasElement>(null)
     const [draggedShip, setDraggedShip] = useState<any | null>(null)
-    const { table1, moveShip, placeShip, room,  } = useGameStore()
+    const { table1, moveShip, placeShip, room, } = useGameStore()
     const isPlayerTurn = useIsPlayerTurn()
     const isPlacing = room?.status == 'placing'
 
@@ -72,7 +68,7 @@ const PlayerGrid = () => {
 
 
     }
-    const handleMouseUp = (event: MouseEvent) => {
+    const handleMouseUp = () => {
 
     }
 
@@ -196,7 +192,9 @@ const PlayerGrid = () => {
     }
 
     return (
-        <Canvas height={400} width={400} gameLoop={gameLoop} canvasRef={tableRef} />
+        <div className={`relative ${isPlayerTurn ? 'animate-pulse-shadow border-2 border-green-400 rounded-lg  transition-all duration-800 ' : ''}`}>
+            <Canvas height={400} width={400} gameLoop={gameLoop} canvasRef={tableRef} />
+        </div>
     )
 
 }

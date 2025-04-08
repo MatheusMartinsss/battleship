@@ -1,13 +1,13 @@
 import { create } from "zustand";
-import Water from '../assets/water.png'
-import Explosion from '../assets/explosion0.png'
-import Splash from '../assets/Splash.png'
-import Wave from '../assets/Wave.png'
-import cruiser from '../assets/Ships/Cruiser/Cruiser.png'
-import destroyer from '../assets/Ships/Destroyer/Destroyer.png'
-import carrier from '../assets/Ships/Carrier/Carrier.png'
-import submarine from '../assets/Ships/Submarine/Submarine.png'
-import patrol from '../assets/Ships/PatrolBoat/Patrol.png'
+import Water from '../../public/assets/water.png'
+import Explosion from '../../public/assets/explosion0.png'
+import Splash from '../../public/assets/Splash.png'
+import Wave from '../../public/assets/Wave.png'
+import cruiser from '../../public/assets/Ships/Cruiser/Cruiser.png'
+import destroyer from '../../public/assets/Ships/Destroyer/Destroyer.png'
+import carrier from '../../public/assets/Ships/Carrier/Carrier.png'
+import submarine from '../../public/assets/Ships/Submarine/Submarine.png'
+import patrol from '../../public/assets/Ships/PatrolBoat/Patrol.png'
 
 
 type orientation = 'horizontal' | 'vertical';
@@ -120,7 +120,7 @@ type GameState = {
     table1: PlayerTable
     role: string;
     addShip: ({ id, col, row, type, orientation }: { id: number, col: number, row: number, type: ShipType['type'], orientation: orientation }) => void
-    joinRoom: (room: Room, player: Player, opponent: Player, role: string) => void;
+    joinRoom: (room: Room, player: Player, opponent: Player | null, role: string) => void;
     placeShip: ({ col, row, id }: PlaceShipParams) => void
     moveShip: ({ col, row, shipId }: { col: number, row: number, shipId: number }) => void
     updatePlayer: (data: Player) => void
@@ -515,5 +515,19 @@ export const useBattleResult = () => {
             : opponent?.name || 'Oponente',
         playerName: state.currentPlayer?.name || 'Jogador',
         opponentName: opponent?.name
+    }
+}
+
+export const useGameInfo = () => {
+    const state = useGameStore()
+    const room = state.room
+
+    const currentPlayer = state.currentPlayer
+    const opponent = state.opponent
+    const isPlayerTurn = room?.turnId === currentPlayer?.id && room?.status == 'battling'
+    return {
+        player: currentPlayer,
+        opponent,
+        isPlayerTurn
     }
 }
