@@ -33,12 +33,22 @@ const GameInfo = () => {
                 )
             case "battling":
                 return (
-
                     <motion.div /* existing animation */>
                         <div className="flex items-center gap-4">
                             <div className="h-3 w-3 animate-ping rounded-full bg-green-400" />
                             <h1 className="text-2xl font-bold">
-                                Turno de {namePlayerAttacking }
+                                Turno de {namePlayerAttacking}
+                            </h1>
+                        </div>
+                    </motion.div>
+                )
+            case "finished":
+                return (
+                    <motion.div /* existing animation */>
+                        <div className="flex items-center gap-4">
+                            <div className="h-3 w-3 animate-ping rounded-full bg-green-400" />
+                            <h1 className="text-2xl font-bold">
+                                Ganhador {namePlayerAttacking}
                             </h1>
                         </div>
                     </motion.div>

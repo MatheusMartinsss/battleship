@@ -5,15 +5,17 @@ import { useGameStore } from '@/context/gameStore'
 import PlayerGrid from '@/components/PlayerGrid'
 import OpponentGrid from '@/components/OpponentGrid'
 import GameInfo from '@/components/GameInfo';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTimer } from '@/lib/useTimer';
+import { WinnerInfo } from '@/components/WinnerInfo';
+
 
 function Game() {
     const { socket } = useSocket()
     const { roomId } = useParams(); // Acessa o parâmetro da rota
     const { start, time, formattedTime, isActive, reset } = useTimer()
-    const { room, addShip, updateRoom, updateOpponent, role, table1, updateEnemyTable, updatePlayerTable } = useGameStore()
-
+    const { room, addShip, updateRoom, updateOpponent, role, table1, updateEnemyTable, updatePlayerTable, updatePlayer, resetGame } = useGameStore()
+    const [winnerAlert, setWinner] = useState(false)
 
     useEffect(() => {
         const handleRoomUpdate = (room: any) => {
@@ -21,7 +23,7 @@ function Game() {
 
         }
         const handlePlayerJoined = (opponent: any) => {
-            updateOpponent(opponent)
+            updateOpponent(opponent.player)
 
         }
 
@@ -37,24 +39,32 @@ function Game() {
         const handleStart = () => {
             alert('O jogo vai começar...')
         }
-
         const handlePlayerTurn = () => {
 
         }
-
         const onAttack = (data: any) => {
             updateEnemyTable(data.table2)
-            console.log(data)
         }
-
         const onTakeHit = (data: any) => {
             updatePlayerTable(data.table1)
-            console.log(data)
         }
         const handleWinner = (data: any) => {
-            alert(`ganhador ${data}`)
+            setWinner(true)
         }
 
+        const handleReset = (data: any) => {
+            resetGame()
+            handleCount(60)
+        }
+        const handleGameUpdate = (data: any) => {
+            updateOpponent(data.opponent)
+            updatePlayer(data.player)
+            updateRoom(data.room)
+           
+        }
+
+
+        socket.on('reset', handleReset)
         socket.on('room-update', handleRoomUpdate);
         socket.on('winner', handleWinner)
         socket.on('attack-update', onAttack)
@@ -63,11 +73,12 @@ function Game() {
         socket.on('count', handleCount)
         socket.on('ships-placed', handleSaved)
         socket.on('start', handleStart)
-        socket.on('player-turn', handlePlayerTurn)
-
+        socket.on('turn-update', handlePlayerTurn)
+        socket.on('game-update', handleGameUpdate)
         socket.emit('ready', ({ roomId, role }))
 
         return () => {
+            socket.off('game-update',)
             socket.off('attack-update', onAttack)
             socket.off('hit-update', onTakeHit)
             socket.off('room-update', handleRoomUpdate);
@@ -105,23 +116,31 @@ function Game() {
 
     }
 
+    const handleCloseWinnerDialog = () => {
+        setWinner(false)
+    }
+
     const save = () => {
         if (isActive) {
             reset()
         }
         socket.emit('place-ships', table1.ships)
     }
+    const handlePlayAgain = () => {
+        socket.emit('play-again')
+    }
     return (
         <div className='min-h-screen bg-gradient-to-br from-blue-900 via-navy-800 to-blue-900 flex flex-col items-center justify-center p-4 space-y-2'>
             <h1>{formattedTime}</h1>
             <h1>{room?.status}</h1>
+            <WinnerInfo isWinnerDialogOpen={winnerAlert} handleCloseWinnerDialog={handleCloseWinnerDialog} handlePlayAgain={handlePlayAgain} />
             <GameInfo />
             <div className='flex flex-col space-y-2'>
                 <OpponentGrid />
                 <PlayerGrid />
             </div>
             <div>
-                <Button onClick={save}>Salvar</Button>
+                <Button variant='default' onClick={save}>Salvar</Button>
             </div>
         </div>
     )

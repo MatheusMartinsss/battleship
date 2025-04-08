@@ -2,11 +2,8 @@ const express = require('express');
 const app = express();
 const http = require('http');
 const socket = require('socket.io');
-const Room = require('./class/room')
-const Player = require('./class/player')
 const server = http.createServer(app);
 const { v4: uuidv4 } = require('uuid');
-const { table } = require('console');
 
 const PORT = 3000 || process.env.PORT;
 
@@ -52,6 +49,7 @@ const initialRoom = {
         name: "",
         connected: false,
         shipsPlaced: false,
+        wantsRematch: false,
         score: 0,
     },
     player2: {
@@ -59,6 +57,7 @@ const initialRoom = {
         name: "",
         shipsPlaced: false,
         connected: false,
+        wantsRematch: false,
         score: 0,
     },
 }
@@ -82,7 +81,6 @@ const initialTable = {
 
 io.on('connection', (socket) => {
 
-    console.log(socket)
     socket.on('create', ({ roomName, playerName }) => {
 
         const roomId = uuidv4();
@@ -116,6 +114,8 @@ io.on('connection', (socket) => {
                 roomId: roomId
             }
         }
+        socket.data.user = playerName
+        socket.data.roomId = roomId
         socket.join(roomId)
         socket.emit('created', { room: rooms[roomId], player: players[socket.id], role: 'player1' })
     })
@@ -125,6 +125,10 @@ io.on('connection', (socket) => {
 
         if (!room) {
             socket.emit('join-error', { error: { message: "Sala não encontrada!" } })
+            return
+        }
+        if (room.player1.id && room.player2.id) {
+            socket.emit('join-error', { message: 'Sala cheia!', error: 'unauthorized' })
             return
         }
         room.status = 'placing'
@@ -159,9 +163,8 @@ io.on('connection', (socket) => {
 
     socket.on('ready', ({ roomId }) => {
         const room = rooms[roomId]
-
         const role = getPlayerRole(roomId, socket.id)
-        console.log(role)
+
         room[role].connected = true
         if (room && room.player1.connected && room.player2.connected) {
             io.in(room.id).emit('count', { time: 10 });
@@ -251,18 +254,49 @@ io.on('connection', (socket) => {
             const shipsCopy = [...target.playerShips]
             target.playerShips = checkSunkShip(shipsCopy, target.table1)
         }
-        if (checkAllShipsIsSunk(target.playerShips)) {
-            io.in(room.id).emit('winner', { winnerId: socket.id })
-        }
         //update turn 
-        room.turnId = room.turnId == room.player1.id ? room.player2.id : room.player1.id
-        socket.emit('attack-update', player)
-        io.to(target.id).emit('hit-update', target)
-        io.in(room.id).emit('turn-update', { turnId: room.turnId })
+        if (checkAllShipsIsSunk(target.playerShips)) {
+            room.status = 'finished'
+            room.winnerId = player.id
+            io.in(room.id).emit('winner', player)
+
+        } else {
+            room.turnId = room.turnId == room.player1.id ? room.player2.id : room.player1.id
+            io.in(room.id).emit('turn-update', { turnId: room.turnId })
+            socket.emit('attack-update', player)
+            io.to(target.id).emit('hit-update', target)
+
+        }
         io.in(room.id).emit('room-update', room);
+        updateGameDelta(room.id)
+        //verify if have an winner
     })
 
-    socket.on('restart', (request) => {
+    socket.on('play-again', () => {
+        const player = players[socket.id]
+
+        if (!player) return
+
+        const room = rooms[player.roomId]
+
+        if (!room) return
+
+        const role = getPlayerRole(room.id, player.id)
+
+        room[role].wantsRematch = true
+
+        resetGame(room.id)
+
+
+        if (room.player1.wantsRematch && room.player2.wantsRematch) {
+
+            // Resetar o desejo de revanche
+            room.player1.wantsRematch = false;
+            room.player2.wantsRematch = false;
+
+            updateGameDelta(room.id)
+            io.in(room.id).emit('reset')
+        }
 
 
 
@@ -272,10 +306,50 @@ io.on('connection', (socket) => {
         //  onPlayerLeave(socket.id)
     })
 
+    function updateGameDelta(roomId) {
+        const _room = io.sockets.adapter.rooms.get(roomId);
+        if (!_room) return
+        _room.forEach((socketId) => {
+
+            const socket = io.sockets.sockets.get(socketId)
+
+            if (socket) {
+                const player = players[socketId]
+                const opponentId = Array.from(_room).find((id => id !== socketId))
+                if (opponentId) {
+                    const opponent = players[opponentId]
+                    socket.emit("game-update", {
+                        player: player,
+                        opponent,
+                        room: rooms[roomId]
+                    })
+                }
+
+            }
+        })
+    }
+
+    function getUsersInRoom(roomId) {
+        const room = io.sockets.adapter.rooms.get(roomId);
+        if (!room) return []; // Sala não existe
+
+        const users = [];
+        for (const socketId of room) {
+            const socket = io.sockets.sockets.get(socketId);
+            if (socket && socket.data.user) {
+                users.push(socket.data.user);
+            }
+        }
+        return users;
+    }
+
     function getPlayerRole(roomId, id) {
         const room = rooms[roomId]
         if (!room) return
         return room.player1.id == id ? 'player1' : 'player2'
+    }
+    function getPlayEnemy(roomId, id) {
+
     }
 
     function checkSunkShip(ships, grid) {
@@ -286,6 +360,41 @@ io.on('connection', (socket) => {
     }
     function checkAllShipsIsSunk(ships) {
         return ships.every(ship => ship.isSunk)
+    }
+
+    function resetGame(roomId) {
+        const room = rooms[roomId];
+        const player1 = players[room.player1.id];
+        const player2 = players[room.player2.id];
+        // Resetar o estado da sala
+        room.status = 'placing';
+        room.turnId = null;
+        room.winnerId = null;
+
+        // Resetar jogadores
+        if (player1) {
+            player1.table1 = createInitialMatrix()
+            player1.table2 = createInitialMatrix()
+            player1.playerShips = []
+            player1.isReady = false
+            player1.score = 0
+        }
+
+        if (player2) {
+            player2.table1 = createInitialMatrix()
+            player2.table2 = createInitialMatrix()
+            player2.playerShips = []
+            player2.isReady = false
+            player2.score = 0
+        }
+
+        room.player1.score = 0;
+        room.player1.shipsPlaced = false;
+        room.player1.connected = true;
+
+        room.player2.score = 0;
+        room.player2.shipsPlaced = false;
+        room.player2.connected = true;
     }
 })
 

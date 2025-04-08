@@ -64,7 +64,7 @@ function Home() {
     };
 
     useEffect(() => {
-        const handleCreated = (response: { room: any, player: any }) => {
+        const handleCreated = (response: { room: any, player: any, role: string }) => {
             const { room, player, role } = response
             joinRoom(room, player, null, role)
             setLoading(false);
@@ -76,7 +76,7 @@ function Home() {
             setError(error.message);
         };
 
-        const handleJoin = (response: { room: any, player: any, opponent: any }) => {
+        const handleJoin = (response: { room: any, player: any, opponent: any, role: string }) => {
             const { room, player, opponent, role } = response
             joinRoom(room, player, opponent, role)
             setLoading(false)

@@ -31,6 +31,7 @@ type PlaceShipParams = {
 type Player = {
     id: string;
     roomId: string;
+    name: string;
     table1: Cell[][];
     table2: Cell[][];
     ships: Ship[];
@@ -122,10 +123,12 @@ type GameState = {
     joinRoom: (room: Room, player: Player, opponent: Player, role: string) => void;
     placeShip: ({ col, row, id }: PlaceShipParams) => void
     moveShip: ({ col, row, shipId }: { col: number, row: number, shipId: number }) => void
+    updatePlayer: (data: Player) => void
     updateOpponent: (data: Player) => void
     updateRoom: (data: Room) => void
     updatePlayerTable: (data: any) => void
     updateEnemyTable: (data: any) => void
+    resetGame: () => void
 
 };
 
@@ -223,7 +226,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     table1: createGrid(),
     // Actions
     joinRoom: (room, player, opponent, role) => {
-
+        console.log(room, player, opponent, role)
         set({
             room,
             role,
@@ -412,13 +415,22 @@ export const useGameStore = create<GameState>((set, get) => ({
         });
 
     },
+    updatePlayer: (data) => {
+        const { currentPlayer } = get()
+        set({
+            currentPlayer: {
+                ...currentPlayer,
+                ...data
+            }
+        })
+    },
     updateOpponent: (data) => {
         const { opponent } = get();
         set({
             opponent: {
                 ...opponent,
                 ...data
-            }
+            },
         })
     },
     updateRoom: (data) => {
@@ -428,7 +440,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             room: {
                 ...room,
                 ...data
-            }
+            },
         })
     },
 
@@ -456,6 +468,12 @@ export const useGameStore = create<GameState>((set, get) => ({
                 grid: data
             }
         })
+    },
+    resetGame: () => {
+        set({
+            table1: createGrid(),
+            table2: createGrid()
+        })
     }
 
 }));
@@ -474,3 +492,28 @@ export const useIsPlayerTurn = () =>
 export const useNamePlayerAttacking = () => useGameStore((state) => {
     return state.room?.player1.id == state.room?.turnId ? state.room?.player1.name : state.room?.player2.name
 })
+
+export const useWinnerName = () => useGameStore((state) => {
+    return state.room?.winnerId == state.room?.player1.id ? state.room?.player1.name : state.room?.player2.name
+})
+
+export const useBattleResult = () => {
+    const state = useGameStore()
+
+    const room = state.room
+
+    if (!room || room.status !== "finished") return null
+
+    // Calcula os valores de forma segura
+    const currentPlayer = state.currentPlayer
+    const isPlayer1Winner = room.winnerId === currentPlayer?.id
+    const opponent = state.opponent
+    return {
+        isVictory: room.winnerId === currentPlayer?.id,
+        winnerName: isPlayer1Winner
+            ? currentPlayer.name
+            : opponent?.name || 'Oponente',
+        playerName: state.currentPlayer?.name || 'Jogador',
+        opponentName: opponent?.name
+    }
+}
