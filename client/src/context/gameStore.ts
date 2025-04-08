@@ -1,13 +1,13 @@
 import { create } from "zustand";
-import Water from '../../public/assets/water.png'
-import Explosion from '../../public/assets/explosion0.png'
-import Splash from '../../public/assets/Splash.png'
-import Wave from '../../public/assets/Wave.png'
-import cruiser from '../../public/assets/Ships/Cruiser/Cruiser.png'
-import destroyer from '../../public/assets/Ships/Destroyer/Destroyer.png'
-import carrier from '../../public/assets/Ships/Carrier/Carrier.png'
-import submarine from '../../public/assets/Ships/Submarine/Submarine.png'
-import patrol from '../../public/assets/Ships/PatrolBoat/Patrol.png'
+import Water from '/assets/water.png'
+import Explosion from '/assets/explosion0.png'
+import Splash from '/assets/Splash.png'
+import Wave from '/assets/Wave.png'
+import cruiser from '/assets/Ships/Cruiser/Cruiser.png'
+import destroyer from '/assets/Ships/Destroyer/Destroyer.png'
+import carrier from '/assets/Ships/Carrier/Carrier.png'
+import submarine from '/assets/Ships/Submarine/Submarine.png'
+import patrol from '/assets/Ships/PatrolBoat/Patrol.png'
 
 
 type orientation = 'horizontal' | 'vertical';

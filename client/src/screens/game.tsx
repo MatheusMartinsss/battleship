@@ -6,14 +6,12 @@ import PlayerGrid from '@/components/PlayerGrid'
 import OpponentGrid from '@/components/OpponentGrid'
 import GameInfo from '@/components/GameInfo';
 import { useEffect, useState } from 'react';
-import { useTimer } from '@/lib/useTimer';
 import { WinnerInfo } from '@/components/WinnerInfo';
 
 
 function Game() {
     const { socket } = useSocket()
     const { roomId } = useParams(); // Acessa o parâmetro da rota
-    const { start, formattedTime, isActive, reset } = useTimer()
     const { room, addShip, updateRoom, updateOpponent, role, table1, updateEnemyTable, updatePlayerTable, updatePlayer, resetGame } = useGameStore()
     const [winnerAlert, setWinner] = useState(false)
 
@@ -26,24 +24,20 @@ function Game() {
             updateOpponent(opponent.player)
 
         }
-
         const handleCount = () => {
-            start(60, 'down',)
+            // startCount(time)
             addShipFunction()
         }
-
         const handleSaved = (data: any) => {
             console.log(data)
         }
-
         const handleStart = () => {
-            alert('O jogo vai começar...')
+            handleCount()
         }
         const handlePlayerTurn = () => {
 
         }
         const onAttack = (data: any) => {
-            console.log(data.table2)
             updateEnemyTable(data.table2)
         }
         const onTakeHit = (data: any) => {
@@ -122,21 +116,47 @@ function Game() {
     }
 
     const save = () => {
-        if (isActive) {
-            reset()
-        }
         socket.emit('place-ships', table1.ships)
     }
     const handlePlayAgain = () => {
         socket.emit('play-again')
     }
     return (
-        <div className='min-h-screen bg-gradient-to-br from-blue-900 via-navy-800 to-blue-900 flex flex-col items-center justify-center p-4 space-y-2'>
-            <h1>{formattedTime}</h1>
-            <h1>{room?.status}</h1>
+        <div className='min-h-screen md:w-full bg-gradient-to-br from-blue-900 via-navy-800 to-blue-900 flex flex-col items-center justify-center p-4 space-y-2'>
             <WinnerInfo isWinnerDialogOpen={winnerAlert} handleCloseWinnerDialog={handleCloseWinnerDialog} handlePlayAgain={handlePlayAgain} />
+            {/*time > 0 && (
+                <div className={cn(
+                    "font-mono font-bold tracking-wide",
+                    "flex items-center gap-2",
+                    "p-3 rounded-lg",
+                    "bg-gradient-to-br from-blue-900/90 to-navy-800/90",
+                    "border-2 border-sky-600/50",
+                    "backdrop-blur-sm",
+                    "shadow-xl",
+                    "transition-all duration-300",
+
+                )}>
+              
+                    <svg
+                        className="w-6 h-6 text-current animate-tick"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+
+           
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-blue-400/10 blur-sm" />
+                        <span className="relative z-10 text-2xl">
+                            {time}
+                        </span>
+                    </div>
+                </div>
+            )*/}
             <GameInfo />
-            <div className='flex flex-col space-y-2'>
+            <div className='flex  md:flex-row md:items-center md:justify-between md:space-x-12 flex-col space-y-2'>
                 <OpponentGrid />
                 <PlayerGrid />
             </div>
@@ -164,7 +184,7 @@ function Game() {
                             </svg>
                             FROTA PRONTA!
                         </span>
-                        {/* Efeito de "radar" desativado após confirmação */}
+
                         <span className="absolute top-0 -right-8 w-8 h-full bg-white/20 skew-x-12 animate-radar-sweep" />
                     </Button>
                 }
@@ -191,7 +211,7 @@ function Game() {
                             </svg>
                             JOGAR NOVAMENTE
                         </span>
-                        {/* Efeito de "radar" desativado após confirmação */}
+
                         <span className="absolute top-0 -right-8 w-8 h-full bg-white/20 skew-x-12 animate-radar-sweep" />
                     </Button>
                 }

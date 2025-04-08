@@ -1,12 +1,13 @@
 import Canvas from "./table"
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore, useIsPlayerTurn } from "@/context/gameStore"
+import { cn } from "@/lib/utils"
 
 
 const PlayerGrid = () => {
     const tableRef = useRef<HTMLCanvasElement>(null)
     const [draggedShip, setDraggedShip] = useState<any | null>(null)
-    const { table1, moveShip, placeShip, room, } = useGameStore()
+    const { table1, moveShip, placeShip, room, currentPlayer } = useGameStore()
     const isPlayerTurn = useIsPlayerTurn()
     const isPlacing = room?.status == 'placing'
 
@@ -192,8 +193,37 @@ const PlayerGrid = () => {
     }
 
     return (
-        <div className={`relative ${isPlayerTurn ? 'animate-pulse-shadow border-2 border-green-400 rounded-lg  transition-all duration-800 ' : ''}`}>
-            <Canvas height={400} width={400} gameLoop={gameLoop} canvasRef={tableRef} />
+        <div className="flex flex-col">
+            <div className={cn(
+                "text-xl font-bold tracking-wide",
+                "flex items-center gap-2 justify-center",
+                "drop-shadow-lg mb-4",
+                "relative group",
+                // Estilos base
+                "bg-gradient-to-r from-blue-900/80 to-navy-800/80",
+                "px-6 py-3 rounded-full",
+                "border-2 border-sky-700/50",
+                "backdrop-blur-sm",
+                "transition-all duration-300",
+                "hover:scale-105 hover:shadow-xl",
+            )}>
+                <div className="absolute inset-0 rounded-full overflow-hidden">
+                    <div className="absolute -inset-8 animate-spin-slow">
+                        <div className="w-full h-full bg-[conic-gradient(var(--tw-gradient-from),transparent_30%)] from-transparent via-white/10 to-transparent opacity-20" />
+                    </div>
+                </div>
+                <span className={cn(
+                    "text-shadow-md relative z-10",
+                    "bg-clip-text text-transparent",
+                    "bg-gradient-to-r from-sky-300 to-blue-100",
+                )}>
+                    {currentPlayer?.name}
+                </span>
+            </div>
+
+            <div className={`relative ${isPlayerTurn ? 'animate-pulse-shadow-player' : ''}`}>
+                <Canvas height={400} width={400} gameLoop={gameLoop} canvasRef={tableRef} />
+            </div>
         </div>
     )
 

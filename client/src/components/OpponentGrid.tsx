@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useGameStore, useIsPlayerTurn } from "@/context/gameStore"
 import { WaitingCard } from "./waitingPlayer"
 import { useSocket } from '../context/useSocket'
+import { cn } from "@/lib/utils"
 
 const OpponentGrid = () => {
     const tableRef = useRef<HTMLCanvasElement>(null)
@@ -59,7 +60,7 @@ const OpponentGrid = () => {
     }
 
     const handleMouseMove = () => {
-     
+
 
     }
 
@@ -108,20 +109,49 @@ const OpponentGrid = () => {
         context.restore();
 
     }
-    if (!opponent) return (
-        <div className=" w-[400px] h-[400px]">
-            <WaitingCard />
-        </div>
-    )
+  
     return (
-        <div className={`relative ${!isPlayerTurn ? 'animate-pulse-shadow' : ''}`}>
-            <Canvas
-                height={400}
-                width={400}
-                gameLoop={gameLoop}
-                canvasRef={tableRef}
-
-            />
+        <div className="flex flex-col">
+            <div className={cn(
+                "text-xl font-bold tracking-wide",
+                "flex items-center gap-2 justify-center",
+                "drop-shadow-lg mb-4",
+                "relative group",
+                // Estilos base
+                "bg-gradient-to-r from-blue-900/80 to-navy-800/80",
+                "px-6 py-3 rounded-full",
+                "border-2 border-sky-700/50",
+                "backdrop-blur-sm",
+                "transition-all duration-300",
+                "hover:scale-105 hover:shadow-xl",
+            )}>
+                <div className="absolute inset-0 rounded-full overflow-hidden">
+                    <div className="absolute -inset-8 animate-spin-slow">
+                        <div className="w-full h-full bg-[conic-gradient(var(--tw-gradient-from),transparent_30%)] from-transparent via-white/10 to-transparent opacity-20" />
+                    </div>
+                </div>
+                <span className={cn(
+                    "text-shadow-md relative z-10",
+                    "bg-clip-text text-transparent",
+                    "bg-gradient-to-r from-sky-300 to-blue-100",
+                )}>
+                    {opponent?.name}
+                </span>
+            </div>
+            {!opponent ? (
+                <div className=" w-[400px] h-[400px]">
+                    <WaitingCard />
+                </div>
+            ) : (
+                <div className={`relative ${!isPlayerTurn ? 'animate-pulse-shadow-opponent' : ''}`}>
+                    <Canvas
+                        height={400}
+                        width={400}
+                        gameLoop={gameLoop}
+                        canvasRef={tableRef}
+                    />
+                </div>
+            )}
         </div>
     )
 

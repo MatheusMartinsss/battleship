@@ -1,11 +1,11 @@
-import { useGameStore, useNamePlayerAttacking } from '@/context/gameStore'
+import { useBattleResult, useGameInfo, useGameStore } from '@/context/gameStore'
 import { motion } from 'framer-motion'
 
 
 const GameInfo = () => {
     const { room } = useGameStore()
-    const namePlayerAttacking = useNamePlayerAttacking()
-
+    const { opponent, isPlayerTurn } = useGameInfo()
+    const result = useBattleResult()
 
     const render = () => {
         switch (room?.status) {
@@ -37,7 +37,7 @@ const GameInfo = () => {
                         <div className="flex items-center gap-4">
                             <div className="h-3 w-3 animate-ping rounded-full bg-green-400" />
                             <h1 className="text-2xl font-bold">
-                                Turno de {namePlayerAttacking}
+                                {isPlayerTurn ? 'É a sua vez!' : `Turno de ${opponent?.name}`}
                             </h1>
                         </div>
                     </motion.div>
@@ -48,7 +48,7 @@ const GameInfo = () => {
                         <div className="flex items-center gap-4">
                             <div className="h-3 w-3 animate-ping rounded-full bg-green-400" />
                             <h1 className="text-2xl font-bold">
-                                Ganhador {namePlayerAttacking}
+                                Ganhador {result?.winnerName}
                             </h1>
                         </div>
                     </motion.div>
@@ -64,8 +64,6 @@ const GameInfo = () => {
 
     return (
         <div>
-            Player1 Score: {room?.player1.score}
-            Player2 Score: {room?.player2.score}
             {render()}
         </div>
     )
