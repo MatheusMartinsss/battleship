@@ -163,6 +163,7 @@ io.on('connection', (socket) => {
 
 
     socket.on('ready', ({ roomId }) => {
+        console.log(roomId)
         const room = rooms[roomId]
         const role = getPlayerRole(roomId, socket.id)
 
