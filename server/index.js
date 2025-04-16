@@ -10,7 +10,7 @@ const PORT = 3000 || process.env.PORT;
 
 const io = socket(server, {
     cors: {
-        origin: "*",
+        origin: "http://batalhanaval.io",
         methods: ["GET", "POST"]
     }
 })
