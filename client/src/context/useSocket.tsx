@@ -1,7 +1,7 @@
 import { ReactNode, createContext, useContext } from 'react';
 import { io, Socket } from 'socket.io-client';
 
-const URL = import.meta.env.API_URL || 'http://localhost:3000/';
+const URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/';
 const SocketContext = createContext<{ socket: Socket } | null>(null);
 
 interface SocketProviderProps {
