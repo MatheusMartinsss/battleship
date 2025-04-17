@@ -11,7 +11,7 @@ const PORT = 3000 || process.env.PORT;
 const io = socket(server, {
     cors: {
         origin: "*",
-
+        methods: ["GET", "POST"]
     },
 
 })
